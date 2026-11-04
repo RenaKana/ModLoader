@@ -1,0 +1,55 @@
+.app-shell .topbar-space { height: var(--app-header-height, 56px); flex: 0 0 auto; overflow-anchor: none; }
+.app-shell .app-header {
+  --header-compact-height: 56px;
+  --header-motion-duration: 180ms;
+  --header-move-ease: cubic-bezier(0.77, 0, 0.175, 1);
+  --header-label-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  /* Cover the top gap only over the bar, not the chat panels beside it. */
+  position: fixed; inset: 0 12px auto; max-width: 1456px; margin-inline: auto; z-index: 30; padding: 4px 0; background: var(--background);
+}
+.app-shell .header-panel { width: 100%; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 3px 12px #25334a12; }
+.app-shell .app-header .topbar-inner { display: grid; grid-template-columns: minmax(28px, 1fr) auto minmax(28px, 1fr); align-items: center; gap: 12px; padding: 4px 10px; }
+.app-shell .app-header .wordmark { justify-self: start; font-size: calc(21px * var(--font-scale, 1)); }
+.app-shell .app-header .brand-mark { width: 28px; height: 28px; }
+.app-shell .app-header .navigation { order: initial; width: auto; min-width: 0; margin: 0; justify-content: center; padding: 2px; gap: 3px; border-radius: 10px; }
+.app-shell .app-header .navigation button { position: relative; isolation: isolate; flex: 0 0 auto; flex-direction: row; justify-content: center; gap: 0; width: 32px; height: 32px; padding: 0; border-radius: 8px; background: transparent; border-color: transparent; box-shadow: none; }
+.app-shell .app-header .nav-surface { position: absolute; z-index: -1; inset: -1.5px; border: 1.5px solid transparent; border-radius: inherit; transform-origin: top left; pointer-events: none; }
+.app-shell .app-header .navigation button.active .nav-surface { background: white; border-color: #5271ff; box-shadow: 0 0 0 1px #5271ff12, 0 2px 4px #3d5afb08; }
+@media (hover: hover) and (pointer: fine) { .app-shell .app-header .navigation button:not(.active):hover .nav-surface { background: #fff8; } }
+.app-shell .app-header .nav-icon { display: inline-flex; flex: 0 0 16px; width: 16px; height: 16px; }
+.app-shell .app-header .nav-label, .app-shell .app-header .wordmark-text, .app-shell .app-header .service-label { position: absolute; visibility: hidden; opacity: 0; pointer-events: none; transition: opacity 125ms var(--header-label-ease); }
+.app-shell .app-header .nav-count { display: none; }
+.app-shell .app-header .topbar-end { justify-self: end; gap: 5px; margin: 0; }
+.app-shell .app-header .topbar-end .icon-button { display: inline-flex; width: 30px; height: 30px; }
+.app-shell .app-header .topbar-end > .icon-button[aria-pressed="true"] { color: var(--blue); background: #edf1ff; }
+.app-shell .app-header .header-service .badge { gap: 0; padding: 0; border-color: transparent; background: transparent; }
+.app-shell .app-header .header-extra-actions { display: none; gap: 5px; }
+.app-shell .app-header .workspace-summary { display: none; max-width: none; padding: 8px 14px; border-top: 1px solid var(--soft-line); font-size: .8rem; flex-wrap: wrap; gap: 12px; }
+.app-shell .app-header.is-open .topbar-inner { padding-block: 6px; }
+.app-shell .app-header.is-open .navigation button { gap: 6px; width: auto; height: auto; min-height: 34px; padding: 7px 10px; }
+.app-shell .app-header.is-open .nav-label, .app-shell .app-header.is-open .wordmark-text, .app-shell .app-header.is-open .service-label { position: static; visibility: visible; opacity: 1; transition-delay: 125ms; }
+.app-shell .app-header.is-open .nav-count { display: inline; }
+.app-shell .app-header.is-open .header-service .badge { gap: 5px; padding: 3px 8px; }
+.app-shell .app-header.is-open .header-extra-actions, .app-shell .app-header.is-open .workspace-summary { display: flex; }
+.app-shell .workspace :where(button, input, select, textarea, [tabindex]) { scroll-margin-top: calc(var(--app-header-height, 56px) + 16px); scroll-margin-bottom: 16px; }
+.app-shell.font-expanded .app-header.is-open .topbar-inner { grid-template-columns: 1fr auto; gap: 8px 12px; }
+.app-shell.font-expanded .app-header.is-open .navigation { grid-column: 1 / -1; grid-row: 2; }
+.app-shell.font-expanded .app-header.is-open .navigation button { flex: 1; }
+.app-shell.font-expanded .app-header.is-open .topbar-end { grid-column: 2; grid-row: 1; }
+@media (max-width: 1190px) { .app-shell .app-header.is-open .wordmark-text { display: none; } .app-shell .app-header.is-open .navigation button { padding-inline: 7px; } }
+@media (max-width: 1000px) {
+  .app-shell .app-header.is-open .topbar-inner { grid-template-columns: 1fr auto; gap: 8px 12px; }
+  .app-shell .app-header.is-open .wordmark-text { display: inline; }
+  .app-shell .app-header.is-open .navigation { grid-column: 1 / -1; grid-row: 2; }
+  .app-shell .app-header.is-open .navigation button { flex: 1; }
+  .app-shell .app-header.is-open .topbar-end { grid-column: 2; grid-row: 1; }
+}
+@media (max-width: 790px) { .app-shell .app-header .navigation button { font-size: .85rem; } .app-shell .app-header .workspace-label { display: none; } }
+@media (max-width: 620px) { .app-shell .app-header.is-open .navigation { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 500px) {
+  .app-shell .app-header { inset-inline: 4px; }
+  .app-shell .app-header .topbar-inner { gap: 3px; padding-inline: 4px; }
+  .app-shell .app-header:not(.is-open) .header-service { display: none; }
+}
+@media (pointer: coarse) { .app-shell .app-header { --header-compact-height: 68px; } .app-shell .app-header .navigation button, .app-shell .app-header .topbar-end .icon-button { min-height: 44px; min-width: 44px; } }
+@media (prefers-reduced-motion: reduce) { .app-shell .app-header.is-open .nav-label, .app-shell .app-header.is-open .wordmark-text, .app-shell .app-header.is-open .service-label { transition-delay: 0s; } }

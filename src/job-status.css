@@ -1,0 +1,13 @@
+.job-progress-copy {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 9px;
+  color: #7b8493;
+  font-size: calc(11px * var(--font-scale, 1));
+  font-variant-numeric: tabular-nums;
+}
+
+.job-progress-copy + .progress-track {
+  margin-top: 5px;
+}

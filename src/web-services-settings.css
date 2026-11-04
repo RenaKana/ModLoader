@@ -1,0 +1,28 @@
+.web-channel-routing { margin: 0; border: 0; min-width: 0; }
+.web-channel-routes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 20px; }
+.web-channel-route { min-width: 0; }
+.web-route-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.web-route-heading h4 { color: #4d5a70; }
+.web-route-heading .icon-button { width: 28px; height: 28px; color: var(--muted); }
+.web-fallback-list { display: grid; gap: 5px; padding: 0; margin: 8px 0 0; list-style: none; }
+.web-fallback-list > li { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.web-fallback-select { flex: 1; min-width: 0; color: var(--muted); font-size: calc(13px * var(--font-scale, 1)); }
+.web-fallback-select.filled { border-color: transparent; color: #4d5a70; padding-inline: 10px; gap: 0; }
+.web-fallback-select.filled::picker-icon { display: none; }
+.web-fallback-select.filled:hover { border-color: var(--line); }
+.web-fallback-select.filled:focus { border-color: #8ea2ff; }
+.web-fallback-actions { display: flex; flex: 0 0 auto; opacity: .25; }
+.web-fallback-list > li:hover .web-fallback-actions, .web-fallback-list > li:focus-within .web-fallback-actions { opacity: 1; }
+.web-fallback-actions .icon-button { width: 22px; height: 28px; padding: 3px; }
+.web-fallback-action-gap { width: 22px; }
+.web-fallback-select::picker(select) { min-inline-size: min(16rem, calc(100vw - 24px)); }
+@media (hover: none) { .web-fallback-actions { opacity: 1; } }
+.web-service-tabs.sub-tabs { margin: 0; padding: 0 23px; gap: 22px; overflow-x: auto; overflow-y: hidden; }
+.web-service-tabs > button { flex: 0 0 auto; }
+.web-service-config .credential-field { margin-top: 20px; }
+.web-openai-models { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 16px; }
+.web-openai-models > .field { margin-bottom: 0; }
+.web-service-tests { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 20px; }
+.web-service-result { margin: 10px 0 0; font-size: calc(12px * var(--font-scale, 1)); line-height: 1.6; color: var(--muted); overflow-wrap: anywhere; }
+.web-service-result.error { color: var(--red, #b35c71); }
+@media (max-width: 620px) { .web-openai-models { grid-template-columns: 1fr; } .web-service-tabs.sub-tabs { padding: 0 19px; gap: 18px; } }

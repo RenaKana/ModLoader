@@ -1,0 +1,18 @@
+.message-markdown .katex { font-size: 1.06em; }
+.message-markdown .katex-display { display: block; max-width: 100%; overflow-x: auto; overflow-y: hidden; padding: .35em 0; margin: .65em 0; }
+.message-markdown .katex-error { white-space: pre-wrap; overflow-wrap: anywhere; }
+.message-code-block { min-width: 0; margin: .8em 0; border: 1px solid #e4eaf3; border-radius: 9px; overflow: hidden; background: #fff; }
+.message-code-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px 4px 12px; color: #73809a; background: #f7f9fc; border-bottom: 1px solid #e9edf4; font: 11px Consolas, 'Courier New', monospace; }
+.message-code-copy { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 24px; padding: 2px 6px; border: 0; border-radius: 4px; background: transparent; color: #647797; font: 12px/1.5 'Outfit', 'Microsoft YaHei UI', sans-serif; white-space: nowrap; }
+.message-code-copy:hover:not(:disabled) { color: #4768ba; background: #edf2fb; }
+.message-code-copy:focus-visible { outline: 2px solid #a1baf0; outline-offset: 1px; }
+.message-code-copy.is-error { color: #a34f3f; }
+.message-markdown .message-code-block pre { margin: 0; border: 0; border-radius: 0; background: #fbfcfe; }
+.message-markdown .message-code-block code.hljs { display: block; overflow: visible; color: #334155; background: transparent; }
+.message-code-source > summary { padding: 6px 12px; cursor: pointer; color: #73809a; font-size: 12px; border-top: 1px solid #e9edf4; }
+.message-code-source > summary:focus-visible { outline: 2px solid #a1baf0; outline-offset: -2px; }
+.message-image { display: flex; max-width: 100%; flex-direction: column; align-items: flex-start; gap: 4px; margin: .5em 0; }
+.message-markdown .message-image img { display: block; max-width: 100%; max-height: 60vh; width: auto; height: auto; object-fit: contain; border-radius: 7px; }
+.message-image > a { font-size: 12px; }
+.message-image-error { color: #8a7049; font-size: .9em; }
+.message-resource-paragraph, .message-markdown > .chat-local-resource { margin: .75em 0; }

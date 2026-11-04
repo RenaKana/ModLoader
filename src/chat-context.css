@@ -1,0 +1,13 @@
+.chat-section .chat-context-usage {
+  display: inline-flex; align-items: center; flex-shrink: 0; gap: 5px;
+  padding: 3px 5px; border-radius: 6px; color: var(--chat-secondary);
+  font-size: calc(12px * var(--font-scale, 1)); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.chat-context-usage svg { width: 20px; height: 20px; flex-shrink: 0; fill: none; stroke-width: 2.5; }
+.chat-context-usage .context-track { stroke: var(--line); }
+.chat-context-usage .context-fill { stroke: var(--blue); }
+.chat-context-usage.is-unavailable .context-track { stroke: #a9b8d1; stroke-dasharray: 3 3; }
+.chat-context-usage:focus-visible { outline: 2px solid #a1baf0; outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  .chat-context-usage:hover { background: #eaf1ff; }
+}

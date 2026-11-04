@@ -1,0 +1,47 @@
+node_modules/
+.venv/
+dist/
+release/
+data/
+work/
+.artifacts/
+/DefaultWorks/
+/Start-ModLoader.local.cmd
+/Start-ModLoader-Strata-Dev.cmd
+/scripts/monitor-acceptance.cjs
+/scripts/preview.cjs
+/scripts/packaged-smoke.cjs
+/scripts/multi_acceptance.py
+__pycache__/
+.pytest_cache/
+*.pyc
+*.log
+core/*.egg-info/
+
+# Local caches and generated diagnostics
+.cache/
+test-results/
+/NVIDIA Corporation/umdlogs/
+/UI截图-*/
+/core/modloader/sensors/
+/native/**/bin/
+/native/**/obj/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+playwright-report/
+
+# Local environment settings and secrets
+.env
+.env.*
+!.env.example
+*.local.env
+*.pem
+*.key
+*.pfx
+*.p12
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+credentials.dpapi.json

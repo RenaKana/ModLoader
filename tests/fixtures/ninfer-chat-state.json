@@ -1,0 +1,42 @@
+{
+  "model": {
+    "id": "3ab3064bd6914e239509a06d41548b3c",
+    "name": "NInfer · Qwen3.8-27B NVFP4",
+    "path": "/fixture/Qwen3.8-27B/model.ninfer",
+    "location": { "platform": "wsl2", "distribution": "ModLoader" },
+    "format": "ninfer",
+    "architecture": "qwen3_5_text",
+    "metadata": {
+      "ninfer_version": 3,
+      "ninfer_artifact_id": "9532789972d2498787bc2f0955a3126f",
+      "ninfer_validation": "container",
+      "ninfer_components": ["text", "mtp"],
+      "ninfer_tensor_formats": ["bf16", "fp32", "fp8_e4m3fn_row_bf16", "nvfp4", "q8_g32_fp16"]
+    },
+    "files": [], "modalities": ["text"], "source": {}, "warnings": [], "managed": false, "size_bytes": 0
+  },
+  "runtime": {
+    "id": "a167e076-71ba-5cc4-87cc-ebba9aeb1bad", "backend": "ninfer", "platform": "wsl2",
+    "name": "NInfer · 64d10fbf9f8e", "version": "64d10fbf9f8e", "managed": true,
+    "path": "/opt/modloader/ninfer-64d10fbf9f8e-35c96b5c/source/build/apps/ninfer-serve",
+    "metadata": {
+      "distribution": "ModLoader", "source_commit": "64d10fbf9f8e6bfc79ab0570b94674c5b9997929",
+      "version_basis": "verified_source_commit",
+      "supported_flags": ["--no-thinking", "--default-thinking-budget", "--preserve-thinking", "--chat-template"]
+    }
+  },
+  "profile": {
+    "id": "d2dbdf8a64d545bcac5d7284b6b5cfae", "model_id": "3ab3064bd6914e239509a06d41548b3c",
+    "backend": "ninfer", "runtime_id": "a167e076-71ba-5cc4-87cc-ebba9aeb1bad",
+    "alias": "NInfer-Qwen3.8-27B-NVFP4", "name": "NInfer-Qwen3.8-27B-NVFP4",
+    "parameters": {}, "generation": {}, "extra_args": [], "revision": 5
+  },
+  "instance": {
+    "id": "ninfer-ready-fixture", "alias": "NInfer-Qwen3.8-27B-NVFP4", "backend": "ninfer",
+    "model_id": "3ab3064bd6914e239509a06d41548b3c", "profile_id": "d2dbdf8a64d545bcac5d7284b6b5cfae",
+    "runtime_id": "a167e076-71ba-5cc4-87cc-ebba9aeb1bad", "profile_revision": 5,
+    "platform": "wsl2", "distribution": "ModLoader", "state": "ready", "active_requests": 0,
+    "capabilities": { "input": ["text"], "tools": true, "generation_parameters": ["temperature", "top_p", "max_tokens", "top_k", "seed"], "stream_usage": true },
+    "port": 12345, "started_at": ""
+  }
+}

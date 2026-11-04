@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "patch_revision": "win-mapped-profile-v1",
+  "patch": "startup-expert-prefetch.patch",
+  "base_commit": "6f8800aefe27819ac89545c86f7686c094f099a4",
+  "variants": [
+    {
+      "engine_version": "0.1.56",
+      "patch_revision": "win-mapped-profile-raw-continuation-0.1.56-v1",
+      "patch": "startup-expert-prefetch-0.1.56.patch",
+      "base_commit": "06698c674673008395ba6e971580538d6b1ea6e0",
+      "features": ["startup_expert_prefetch", "raw_token_continuation"]
+    }
+  ]
+}

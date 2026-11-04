@@ -1,0 +1,6 @@
+.chat-preset-picker { display: grid; gap: 7px; min-width: 0; margin-bottom: 18px; }
+.chat-preset-control { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.chat-preset-control > select { flex: 1; width: 0; min-width: 0; }
+.chat-preset-control > .icon-button { flex: 0 0 auto; }
+.modal.chat-preset-dialog { width: 420px; }
+.chat-preset-dialog > .modal-footer { flex-wrap: wrap; }

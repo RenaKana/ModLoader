@@ -1,0 +1,86 @@
+{
+  "name": "modloader",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "本地模型加载与管理工作台",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "desktop": "electron .",
+    "build": "tsc --noEmit && vite build",
+    "build:icons": "node scripts/build-icons.cjs",
+    "test:ui": "playwright test",
+    "package": "npm run build:icons && npm run build && electron-builder --win --dir"
+  },
+  "dependencies": {
+    "@viz-js/viz": "^3.31.0",
+    "d3-shape": "3.2.0",
+    "dompurify": "^3.4.17",
+    "highlight.js": "^11.12.0",
+    "katex": "^0.18.10",
+    "lucide-react": "^0.468.0",
+    "marked": "16.4.2",
+    "mermaid": "^12.2.0",
+    "micromark-core-commonmark": "^2.0.4",
+    "micromark-extension-math": "^3.1.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "unist-util-visit": "^5.1.0"
+  },
+  "overrides": {
+    "katex": "$katex"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/d3-shape": "3.2.0",
+    "@types/mdast": "^4.0.4",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.0",
+    "micromark-util-types": "^2.0.3",
+    "resedit": "1.7.2",
+    "typescript": "^5.9.0",
+    "unified": "^11.0.5",
+    "vite": "^7.0.0"
+  },
+  "build": {
+    "appId": "local.modloader.desktop",
+    "productName": "ModLoader",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "work/core-dist/modloader-core",
+        "to": "core"
+      }
+    ],
+    "extraFiles": [
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md",
+      "third_party/licenses/**/*",
+      {
+        "from": "src/assets/fonts/OFL.txt",
+        "to": "licenses/Outfit-OFL.txt"
+      }
+    ],
+    "win": {
+      "target": "dir",
+      "icon": "electron/icon.ico",
+      "signExecutable": false
+    }
+  }
+}

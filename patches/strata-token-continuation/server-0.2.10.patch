@@ -1,0 +1,700 @@
+--- a/serve/server.py
++++ b/serve/server.py
+@@ -27,6 +27,7 @@
+ from __future__ import annotations
+ 
+ import argparse
++from array import array
+ import contextlib
+ import collections
+ import base64
+@@ -87,6 +88,7 @@
+ from serve import responses as responses_api  # noqa: E402
+ from serve.responses import ResponsesError, error_body as responses_error_body  # noqa: E402
+ from serve import images as images_api  # noqa: E402
++from serve.raw_continuation import PreparedPrompt, completed_entry  # noqa: E402
+ 
+ IM_END = "<|im_end|>"
+ IMAGE_PAD = "<|image_pad|>"
+@@ -3489,6 +3491,12 @@
+     return alt if alt != first + list(extra or []) else None
+ 
+ 
++def raw_token_continuation_enabled(cfg: dict) -> bool:
++    """Enable both halves from JSON true or the explicit merged engine flag."""
++    return (cfg.get("raw_token_continuation") is True or
++            "--raw-token-continuation" in user_args.merge(cfg.get("args", []), cfg.get("user_args", [])))
++
++
+ def engine_args(cfg: dict, exe: str | None = None, *, announce: bool = True) -> list[str]:
+     """The engine's arguments: the config's, and with several GPUs the layer split across them ("layer_split" in the
+     config: "auto" by default, or the first layer of each later GPU's share, e.g. "18" or "16,32"; see
+@@ -3562,6 +3570,8 @@
+             args += ["--vram-segment-mib", str(seg)]
+     args += parallel_args(cfg, args)
+     args += pool_cores_args(cfg, args)
++    if cfg.get("raw_token_continuation") is True and "--raw-token-continuation" not in args:
++        args.append("--raw-token-continuation")
+     return learned_profile_args(cfg, args)
+ 
+ 
+@@ -4492,10 +4502,12 @@
+ class Service:
+     def __init__(self, engine: Engine, tokenizer, template: ChatTemplate, model_name: str = "qwen3.8-flash-next",
+                  vision: Vision | None = None, sampling_defaults: dict | None = None,
+-                 fit_max_tokens: bool = True):
++                 fit_max_tokens: bool = True, raw_token_continuation: bool = False):
+         self.engine, self.tok, self.template, self.model, self.vision = engine, tokenizer, template, model_name, vision
+         self.literals = literal_tags(getattr(tokenizer, "control_tokens", ()))   # texts that stay text inside a message
+         self.fit_max_tokens = fit_max_tokens          # default: clamp the output cap to the room left; False (--no-fit-max-tokens) = 400
++        self.raw_token_continuation = raw_token_continuation  # opt-in, paired with the native flag
++        self._raw_continuation = None                 # one immutable complete-prefix mapping, replaced atomically
+         self.aliases: list[str] = []                  # #297: other names of the model (the config's `aliases`)
+         self.answer_room = True                       # 0.1.45: see ANSWER_ROOM_MIN_CAP (the config's "answer_room": false turns it off)
+         self.reasoning_close_retry = False            # #1053 (opt-in): close the thinking once when a reply ends inside it
+@@ -5486,17 +5498,21 @@
+         tail = "" if off else EFFORT_TURN.format(EFFORT_TEXT.get(effort, EFFORT_TEXT["medium"]))
+         return history + tail + full[len(mine):]
+ 
++    def _render_marked_prompt(self, messages, tools, kwargs):
++        marked, marked_tools, changed = mark_think_literals(messages, tools, self.literals)
++        prompt = self.render_prompt(marked, marked_tools, kwargs)
++        if changed:
++            prompt, plain = unmark_think_literals(prompt, self.literals)
++            return prompt, tuple(plain)
++        return prompt, ()
++
+     def encode_prompt(self, messages, tools, kwargs, store: bool = True) -> list[int]:
+         """The request's prompt: the template rendered and tokenized.  #537: a <think> / </think> written inside a
+         message's text is encoded as the text it is, not as the model's reasoning markers (the template's own are).
+         A control token's text (<|im_start|>, <|im_end|>, <|endoftext|>, ...) inside a message is text as well: only
+         the control tokens the template writes are control tokens.  `store=False` (a token count) reuses the kept
+         prompts without adding or replacing one."""
+-        marked, marked_tools, changed = mark_think_literals(messages, tools, self.literals)
+-        prompt = self.render_prompt(marked, marked_tools, kwargs)
+-        plain = ()
+-        if changed:
+-            prompt, plain = unmark_think_literals(prompt, self.literals)
++        prompt, plain = self._render_marked_prompt(messages, tools, kwargs)
+         if self.prompts is not None:            # #567: only what follows the last special shared with a recent prompt
+             return self.prompts.encode(prompt, plain, store)
+         return self.tok.encode(prompt, parse_special=True, plain=plain) if plain else \
+@@ -5556,12 +5572,14 @@
+             self.prompts.forget(ids)
+ 
+ 
+-    def prepare(self, messages, tools, kwargs, max_new=None, force=None, req=None, cancel=None):
++    def prepare(self, messages, tools, kwargs, max_new=None, force=None, req=None, cancel=None,
++                continuation=False):
+         """-> (ids, thinking, max_new). An unset or non-positive max_new (some clients send -1) means "unlimited":
+         the rest of the context.  `force` (forced_call): without thinking the reply starts with it, so it ends the
+         prompt; with thinking, Service.run writes it once the thinking is over."""
+         # `cancel` (#1999): set when the client hangs up; the downloads, the wait for the turn and the encodes stop
+         # between pictures and raise ClientGone
++        had_images = bool(images_of(messages)) if continuation and self.raw_token_continuation else False
+         # Cached tool images are references in browser history, never arbitrary file paths or huge base64 strings.
+         for message in messages:
+             for part in message.get("content", []) if isinstance(message.get("content"), list) else []:
+@@ -5582,6 +5600,17 @@
+                         part["source"] = str(image)
+         fetched = self._note_unreadable_tool_images(messages, cancel)
+         ids = encoded_ids = self.encode_prompt(messages, tools, kwargs)
++        if (continuation and self.raw_token_continuation and req is not None and not had_images
++                and not force and not self.family and not self.effort_end
++                and req.get("strata_prefix") is None and not req.get("strata_mcp")
++                and not req.get("response_format") and not stop_strings(req)
++                and not stop_strings(self.sampling_defaults) and not stop_strings(self.shared)
++                and hasattr(self.tok, "encode_marked")):
++            text, plain = self._render_marked_prompt(messages, tools, kwargs)
++            entry = self._raw_continuation
++            if entry is not None:
++                ids = entry.apply(self.tok, ids, text, plain, req["messages"], tools)
++            ids = PreparedPrompt(ids, req["messages"], tools, kwargs)
+         if force and kwargs.get("enable_thinking", True) is False:
+             ids = ids + self.tok.encode(force, parse_special=True)
+         self.embeddings.path = None
+@@ -5952,6 +5981,7 @@
+         recovery_count, reasoning_text, repeat_coverage = 0, "", 0.0
+         looped, next_loop_check = False, LOOP_CHECK_EVERY       # #728: reasoning that repeats whole passages
+         raw_ids = []                                    # every generated id (STRATA_DEBUG: dump raw model text)
++        generation_passes = 0
+         emb, self.embeddings.path = getattr(self.embeddings, "path", None), None   # this run's to delete now
+         img_keys, self.embeddings.keys = getattr(self.embeddings, "keys", None), None
+         if emb and img_keys:
+@@ -6061,6 +6091,7 @@
+                     for ev in opening:
+                         yield "event", ev
+                     while True:
++                        generation_passes += 1
+                         segment_before = getattr(self.engine, "last", None)
+                         segments_before = len(segments)     # (#879: a pass sent again leaves no segment)
+                         gen = self.engine.generate(prompt, max_new - n, sampling, cancel, embeddings=emb) if emb \
+@@ -6428,6 +6459,11 @@
+             done["stop_sequence"] = stops.hit
+         if rejected:
+             done["rejected_tool_calls"] = rejected
++        if (isinstance(ids, PreparedPrompt) and finish == "stop" and generation_passes == 1
++                and not cancel.is_set() and stops is None and not force and not emb and not rejected
++                and not parser.rescued and not parser.refused and parser.state == "content"
++                and not detok.pending() and raw_ids and raw_ids[-1] in self.stop_ids):
++            done["_raw_generated"] = array("I", raw_ids)
+         yield "done", done
+ 
+ 
+@@ -6807,8 +6843,12 @@
+     # llama.cpp's flag, and its default: a client that wants prompt progress asks for it, and nothing changes for one
+     # that does not.  Strata already sends a keep-alive comment on every PP line, so this only fills that line in.
+     want_progress = bool(req.get("return_progress"))
++    remember = isinstance(ids, PreparedPrompt) and run is None and force is None
++    returned = [] if remember else None
+ 
+     def chunk(delta, finish=None):
++        if remember:
++            returned.append(delta)
+         return {"id": cid, "object": "chat.completion.chunk", "created": created, "model": model,
+                 "choices": [{"index": 0, "delta": delta, "finish_reason": finish}]}
+ 
+@@ -6867,6 +6907,13 @@
+                 last["timings"] = x["timings"]          # llama.cpp's field: the speed its clients show
+             if x.get("rejected_tool_calls"):
+                 last["strata_rejected_tool_calls"] = x["rejected_tool_calls"]     # #3796: only when a call was refused as undeclared
++            if remember and x.get("_raw_generated") is not None and (not calls or whole):
++                pieces = ({**last, "choices": [{"index": 0, "delta": d, "finish_reason": finish}]}
++                          for d in returned)
++                assistant = openai_collect(pieces)["choices"][0]["message"]
++                reasoning = "".join(d.get("reasoning_content", "") for d in returned)
++                if reasoning == assistant.get("reasoning_content", ""):
++                    svc._raw_continuation = completed_entry(svc, ids, assistant, x["_raw_generated"])
+             yield last
+ 
+ 
+@@ -8288,7 +8335,8 @@
+             check_request_sampling(req)                       # ... and a sampling field of the wrong type
+             cancel = threading.Event()
+             self._watch_client(cancel)                       # #430 #431 (#1999: before prepare, which can take long)
+-            ids, thinking, max_new = svc.prepare(messages, tools, kw, max_new, force=force, req=req, cancel=cancel)
++            ids, thinking, max_new = svc.prepare(messages, tools, kw, max_new, force=force, req=req, cancel=cancel,
++                                                 continuation=not use_mcp and validator is None)
+             _debug_req("openai", req, messages, tools, max_new, thinking, len(ids))
+             run = run_with_mcp(svc, svc.mcp, messages, tools, kw, ids, thinking, max_new, max_req, req, cancel,
+                                {t["name"] for t in extra}) if use_mcp else None
+@@ -9830,6 +9878,7 @@
+     svc = Service(engine, tok, ChatTemplate(tpl if tpl.exists() else ROOT / "serve/chat_template.jinja"),
+                   model_name=default_model_name(cfg), vision=vision,
+                   sampling_defaults=sampling_defaults,
++                  raw_token_continuation=raw_token_continuation_enabled(cfg),
+                   fit_max_tokens=a.fit_max_tokens or (not a.no_fit_max_tokens and cfg.get("fit_max_tokens") is not False))
+     svc.launch_attestation = launch_attestation
+     if (cfg.get("arch") or "") == "deepseek41" and vision is None and a.engine == "strata":
+--- /dev/null
++++ b/serve/raw_continuation.py
+@@ -0,0 +1,75 @@
++"""One complete OpenAI history prefix mapped to its original generated tokens.
++
++This is deliberately separate from PromptEncoder: that encoder still returns exactly
++the full canonical BPE. A match substitutes a whole completed assistant turn, never
++part of its text. Entries are replaced atomically and token storage is 32-bit.
++"""
++import json
++from array import array
++from dataclasses import dataclass
++from jinja2 import TemplateError
++
++
++def signature(value):
++    # JSON argument strings remain strings: even a whitespace-only rewrite misses.
++    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
++
++
++class PreparedPrompt(list):
++    def __init__(self, ids, messages, tools, kwargs):
++        super().__init__(ids)
++        self.history = json.dumps(messages, ensure_ascii=False)
++        self.tools = json.loads(json.dumps(tools, ensure_ascii=False))
++        self.kwargs = dict(kwargs)
++
++
++@dataclass(frozen=True)
++class Continuation:
++    history: str
++    message_count: int
++    tools: str
++    text: str
++    plain: tuple
++    canonical_ids: array
++    raw_ids: array
++
++    def apply(self, tok, ids, text, plain, messages, tools):
++        cut = len(self.text)
++        if (signature(tools) != self.tools or len(messages) < self.message_count or
++                signature(messages[:self.message_count]) != self.history or
++                not text.startswith(self.text) or
++                tuple((a, min(b, cut)) for a, b in plain if a < cut) != self.plain):
++            return ids
++        tail_plain = tuple((max(a - cut, 0), b - cut) for a, b in plain if b > cut)
++        tail = tok.encode(text[cut:], parse_special=True, plain=tail_plain)
++        # A real special boundary must also split this complete encode exactly.
++        # This checks overlapping special spellings and suffix-sensitive tokenizers.
++        n = len(self.canonical_ids)
++        if array("I", ids[:n]) != self.canonical_ids or ids[n:] != tail:
++            return ids
++        return list(self.raw_ids) + tail
++
++
++def completed_entry(svc, prompt, assistant, raw_ids):
++    history = json.loads(prompt.history) + [assistant]
++    from serve.frontend import openai_to_messages
++    messages, _, _ = openai_to_messages({"messages": history})
++    try:
++        text, plain = svc._render_marked_prompt(messages, prompt.tools,
++                                               {**prompt.kwargs, "add_generation_prompt": False})
++    except (ValueError, TemplateError):
++        return None                     # a template may accept the request but not assistant history
++    ending = "<|im_end|>\n"
++    if not text.endswith(ending):
++        return None
++    text = text[:-1]                     # keep EOS once; the next prompt supplies its separator
++    plain = tuple((a, min(b, len(text))) for a, b in plain if a < len(text))
++    canonical, marks = svc.tok.encode_marked(text, parse_special=True, plain=plain)
++    if not marks or marks[-1] != (len(text), len(canonical)):
++        return None                     # the template end must be a special, not literal text
++    if raw_ids[-1] != canonical[-1]:
++        return None                     # another EOS cannot stand in for this template's turn terminator
++    actual = array("I", prompt)
++    actual.extend(raw_ids)
++    return Continuation(signature(history), len(history), signature(prompt.tools), text, plain,
++                        array("I", canonical), actual)
+--- /dev/null
++++ b/serve/test_raw_token_continuation.py
+@@ -0,0 +1,431 @@
++"""Offline raw-token continuation: real template/parser, scripted engine, no model or HTTP."""
++import copy
++import json
++import sys
++import tempfile
++import threading
++import unittest
++from array import array
++from pathlib import Path
++from unittest.mock import patch
++
++from serve.frontend import ChatTemplate, openai_to_messages
++from serve.server import (ByteTokenizer, CTX_SLACK, MockEngine, Service, EngineDied, engine_args,
++                          openai_chunks, openai_collect)
++from serve.raw_continuation import PreparedPrompt
++
++ROOT = Path(__file__).resolve().parents[1]
++
++
++class AlternativeTokenizer(ByteTokenizer):
++    """The generated HTML token decodes to '<span', canonical encoding uses five IDs."""
++    SPECIALS = ByteTokenizer.SPECIALS + ["<think>", "</think>"]
++    ALWAYS = ("<think>", "</think>")
++    HTML = 1000
++
++    def decode(self, ids, errors="replace"):
++        expanded = []
++        for t in ids:
++            expanded.extend(b"<span" if t == self.HTML else [t])
++        return super().decode(expanded, errors)
++
++
++class Continuation(unittest.TestCase):
++    def service(self, script="Done.</think>\n\n<span>hello</span>", enabled=True, tok=None):
++        tok = tok or AlternativeTokenizer()
++        engine = MockEngine(tok, script, max_context=1 << 20)
++        # Emulate a valid, noncanonical model tokenization, not canonical re-encoding.
++        raw = engine.script
++        needle = list(b"<span")
++        for i in range(len(raw)):
++            if raw[i:i + len(needle)] == needle:
++                raw[i:i + len(needle)] = [tok.HTML]
++                break
++        svc = Service(engine, tok, ChatTemplate(ROOT / "serve/chat_template.jinja"))
++        svc.raw_token_continuation = enabled
++        svc.answer_room = False
++        return svc
++
++    def request(self, **extra):
++        return {"messages": [{"role": "system", "content": "Keep all details."},
++                             {"role": "user", "content": "Write HTML."}], **extra}
++
++    def prepare(self, svc, req, max_new=2048):
++        messages, tools, kw = openai_to_messages(req)
++        return (*svc.prepare(messages, tools, kw, max_new, req=req, continuation=True), tools)
++
++    def answer(self, svc, req, max_new=2048, stream=False):
++        ids, thinking, max_new, tools = self.prepare(svc, req, max_new)
++        chunks = openai_chunks(svc, req, ids, thinking, tools, max_new, threading.Event())
++        result = openai_collect(list(chunks) if stream else chunks)
++        return result, list(ids)
++
++    def next(self, req, result, content="Continue."):
++        return {**copy.deepcopy(req), "messages": copy.deepcopy(req["messages"]) +
++                [copy.deepcopy(result["choices"][0]["message"]), {"role": "user", "content": content}]}
++
++    def canonical(self, svc, req):
++        messages, tools, kw = openai_to_messages(req)
++        return svc.encode_prompt(messages, tools, kw, store=False)
++
++    def test_html_noncanonical_ids_survive_stream_and_collect(self):
++        for stream in (False, True):
++            with self.subTest(stream=stream):
++                svc, req = self.service(), self.request()
++                first, prompt = self.answer(svc, req, stream=stream)
++                nxt = self.next(req, first)
++                second, fed = self.answer(svc, nxt)
++                raw_prefix = prompt + svc.engine.script
++                self.assertEqual(fed[:len(raw_prefix)], raw_prefix)
++                self.assertNotEqual(fed, self.canonical(svc, nxt))
++                self.assertEqual(second["usage"]["prompt_tokens"], len(fed))
++                self.assertEqual(fed[len(raw_prefix)], ord("\n"))
++
++    def test_tool_xml_trailing_lf_is_preserved(self):
++        script = 'Done.</think>\n\n<tool_call>\n<function=read>\n<parameter=path>\na\n</parameter>\n</function>\n</tool_call>\n'
++        svc = self.service(script)
++        req = self.request(tools=[{"type": "function", "function": {"name": "read", "parameters": {
++            "type": "object", "properties": {"path": {"type": "string"}}}}}])
++        first, prompt = self.answer(svc, req)
++        self.assertEqual(first["choices"][0]["finish_reason"], "tool_calls")
++        nxt = self.next(req, first)
++        nxt["messages"][-1] = {"role": "tool", "tool_call_id": first["choices"][0]["message"]["tool_calls"][0]["id"], "content": "file"}
++        ids, *_ = self.prepare(svc, nxt)
++        raw_prefix = prompt + svc.engine.script
++        self.assertEqual(ids[:len(raw_prefix)], raw_prefix)
++        self.assertEqual(raw_prefix[-2], ord("\n"))
++
++    def test_default_does_not_rewrite_prompt(self):
++        svc, req = self.service(enabled=False), self.request()
++        first, _ = self.answer(svc, req)
++        nxt = self.next(req, first)
++        ids, *_ = self.prepare(svc, nxt)
++        self.assertEqual(ids, self.canonical(svc, nxt))
++
++    def test_sampling_changes_do_not_prevent_reuse(self):
++        svc, req = self.service(), self.request(temperature=0.2, top_p=0.8)
++        first, prompt = self.answer(svc, req)
++        nxt = self.next(req, first)
++        nxt.update(temperature=0.9, top_p=0.95, max_tokens=4096)
++        ids, *_ = self.prepare(svc, nxt, max_new=4096)
++        self.assertEqual(ids[:len(prompt) + len(svc.engine.script)], prompt + svc.engine.script)
++
++    def test_history_edit_delete_missing_reasoning_and_assistant_edit_miss(self):
++        svc, req = self.service(), self.request()
++        first, _ = self.answer(svc, req)
++        for change in (lambda m: m[0].update(content="Changed."),
++                       lambda m: m.pop(0),
++                       lambda m: m[-2].pop("reasoning_content"),
++                       lambda m: m[-2].update(content="<span>changed</span>"),
++                       lambda m: m[-2].update(content=" " + m[-2]["content"])):
++            nxt = self.next(req, first)
++            change(nxt["messages"])
++            ids, *_ = self.prepare(svc, nxt)
++            self.assertEqual(ids, self.canonical(svc, nxt))
++
++    def test_length_and_custom_stop_do_not_publish(self):
++        for extra, cap in (({}, 5), ({"stop": "hello"}, 2048)):
++            svc, req = self.service(), self.request(**extra)
++            first, _ = self.answer(svc, req, max_new=cap)
++            nxt = self.next(req, first)
++            ids, *_ = self.prepare(svc, nxt)
++            self.assertEqual(ids, self.canonical(svc, nxt))
++
++    def test_context_budget_uses_final_actual_ids(self):
++        svc, req = self.service(), self.request()
++        first, _ = self.answer(svc, req)
++        nxt = self.next(req, first)
++        ids, *_ = self.prepare(svc, nxt)
++        svc.engine.max_context = len(ids) + CTX_SLACK + 7
++        prepared, _, cap, _ = self.prepare(svc, nxt, max_new=0)
++        self.assertEqual(cap, 7)
++        self.assertEqual(prepared, ids)
++
++    def test_one_compact_mapping_replaces_previous_turn(self):
++        svc, req = self.service(), self.request()
++        first, _ = self.answer(svc, req)
++        entry = svc._raw_continuation
++        self.assertIsInstance(entry.raw_ids, array)
++        self.assertEqual(entry.raw_ids.itemsize, 4)
++        self.assertEqual(entry.raw_ids.buffer_info()[1] * entry.raw_ids.itemsize, 4 * len(entry.raw_ids))
++        self.assertIsInstance(entry.canonical_ids, array)
++        self.assertEqual(entry.canonical_ids.itemsize, 4)
++        second, _ = self.answer(svc, self.next(req, first))
++        self.assertIsNot(svc._raw_continuation, entry)
++        # A history containing only a fraction of a saved raw assistant cannot hit.
++        shortened = self.next(req, first)
++        ids, *_ = self.prepare(svc, shortened)
++        self.assertEqual(ids, self.canonical(svc, shortened))
++
++    def test_opt_in_configuration_passes_native_flag_once(self):
++        with patch("serve.server.drafting_card_class", return_value="unknown"), \
++                patch("serve.server.drafting.detect_hardware", return_value=(None, [])):
++            self.assertNotIn("--raw-token-continuation", engine_args({"args": []}))
++            self.assertEqual(engine_args({"args": [], "raw_token_continuation": True}).count("--raw-token-continuation"), 1)
++            self.assertEqual(engine_args({"args": ["--raw-token-continuation"], "raw_token_continuation": True}).count("--raw-token-continuation"), 1)
++
++    def test_literal_spans_are_part_of_the_prefix_contract(self):
++        svc, req = self.service(), self.request()
++        req["messages"][-1]["content"] += " Quote </think> and <|im_start|>."
++        first, prompt = self.answer(svc, req)
++        nxt = self.next(req, first)
++        ids, *_ = self.prepare(svc, nxt)
++        self.assertEqual(ids[:len(prompt) + len(svc.engine.script)], prompt + svc.engine.script)
++        self.assertTrue(svc._raw_continuation.plain)
++        svc.literals = {}  # Same characters, different literal/control semantics.
++        ids, *_ = self.prepare(svc, nxt)
++        self.assertEqual(ids, self.canonical(svc, nxt))
++
++    def test_overlapping_special_cannot_split_the_new_canonical_encoding(self):
++        class Overlap(AlternativeTokenizer):
++            SPECIALS = ["<|im_end|>\n<|im_start|>"] + AlternativeTokenizer.SPECIALS
++        svc, req = self.service(tok=Overlap()), self.request()
++        first, _ = self.answer(svc, req)
++        nxt = self.next(req, first)
++        ids, *_ = self.prepare(svc, nxt)
++        self.assertEqual(ids, self.canonical(svc, nxt))
++
++    def test_tools_template_and_full_history_changes_miss(self):
++        svc, req = self.service(), self.request(tools=[{"type": "function", "function": {"name": "read"}}])
++        first, _ = self.answer(svc, req)
++        nxt = self.next(req, first)
++        nxt["tools"][0]["function"]["description"] = "new schema"
++        ids, *_ = self.prepare(svc, nxt)
++        self.assertEqual(ids, self.canonical(svc, nxt))
++        nxt = self.next(req, first)
++        original = svc.template
++        class ChangedTemplate:
++            def render(self, *args, **kwargs):
++                return "changed\n" + original.render(*args, **kwargs)
++        svc.template = ChangedTemplate()
++        ids, *_ = self.prepare(svc, nxt)
++        self.assertEqual(ids, self.canonical(svc, nxt))
++
++    def test_tool_arguments_names_and_order_must_equal_returned_values(self):
++        call = '<tool_call>\n<function=read>\n<parameter=path>\na\n</parameter>\n</function>\n</tool_call>'
++        svc = self.service('Done.</think>\n\n' + call + '\n' + call.replace('\na\n', '\nb\n') + '\n')
++        req = self.request(tools=[{"type": "function", "function": {"name": "read", "parameters": {
++            "type": "object", "properties": {"path": {"type": "string"}}}}}])
++        first, _ = self.answer(svc, req)
++        self.assertEqual(len(first["choices"][0]["message"]["tool_calls"]), 2)
++        for change in (lambda c: c.reverse(), lambda c: c[0]["function"].update(name="other"),
++                       lambda c: c[0]["function"].update(arguments='{ "path": "a" }')):
++            nxt = self.next(req, first)
++            change(nxt["messages"][-2]["tool_calls"])
++            ids, *_ = self.prepare(svc, nxt)
++            self.assertEqual(ids, self.canonical(svc, nxt))
++
++    def test_cancel_error_and_generator_close_do_not_publish(self):
++        for mode in ("cancel", "error", "disconnect"):
++            with self.subTest(mode=mode):
++                svc, req = self.service(), self.request()
++                ids, thinking, cap, tools = self.prepare(svc, req)
++                cancel = threading.Event()
++                if mode == "cancel":
++                    cancel.set()
++                elif mode == "error":
++                    def failed(*args, **kwargs):
++                        yield svc.engine.script[0]
++                        raise EngineDied("offline fixture failure")
++                    svc.engine.generate = failed
++                chunks = openai_chunks(svc, req, ids, thinking, tools, cap, cancel)
++                if mode == "error":
++                    with self.assertRaises(EngineDied):
++                        list(chunks)
++                elif mode == "disconnect":
++                    next(chunks)
++                    next(chunks)
++                    chunks.close()
++                else:
++                    list(chunks)
++                self.assertIsNone(svc._raw_continuation)
++
++    def test_reasoning_budget_internal_continuation_does_not_publish(self):
++        svc = self.service("abcdefghij" * 100)
++        req = self.request(reasoning_budget_tokens=10)
++        self.answer(svc, req, max_new=200)
++        self.assertIsNone(svc._raw_continuation)
++
++    def test_partial_tool_call_is_not_recorded_even_with_eos(self):
++        svc = self.service('Done.</think>\n\n<tool_call>\n<function=read>\n<parameter=path>\na')
++        req = self.request(tools=[{"type": "function", "function": {"name": "read", "parameters": {
++            "type": "object", "properties": {"path": {"type": "string"}}}}}])
++        self.answer(svc, req)
++        self.assertIsNone(svc._raw_continuation)
++
++    def test_prefix_force_images_and_non_openai_prepare_keep_original_contract(self):
++        svc, req = self.service(), self.request()
++        first, _ = self.answer(svc, req)
++        nxt = self.next(req, first)
++        messages, tools, kw = openai_to_messages(nxt)
++        ids, *_ = svc.prepare(messages, tools, kw, 100, req=nxt)
++        self.assertNotIsInstance(ids, PreparedPrompt)
++        self.assertEqual(ids, self.canonical(svc, nxt))
++        pinned = {**nxt, "strata_prefix": {"messages": 1}}
++        ids, *_ = svc.prepare(messages, tools, kw, 100, req=pinned, continuation=True)
++        self.assertNotIsInstance(ids, PreparedPrompt)
++        self.assertEqual(ids, self.canonical(svc, nxt))
++        ids, *_ = svc.prepare(messages, tools, kw, 100, force="forced", req=nxt, continuation=True)
++        self.assertNotIsInstance(ids, PreparedPrompt)
++        # A tool image omitted by normal handling must not make this a text-only request.
++        image_messages = copy.deepcopy(messages)
++        image_messages[-1] = {"role": "tool", "content": [{"type": "image", "source": "data:image/png;base64,AA=="}]}
++        with patch.object(svc, "_note_unreadable_tool_images", side_effect=lambda ms, c: ms[-1].update(content="[image omitted]") or {}):
++            ids, *_ = svc.prepare(image_messages, tools, kw, 100, req=nxt, continuation=True)
++        self.assertNotIsInstance(ids, PreparedPrompt)
++
++    def test_only_the_latest_complete_conversation_is_retained(self):
++        svc, req = self.service(), self.request()
++        first, _ = self.answer(svc, req)
++        other = self.request()
++        other["messages"][-1]["content"] = "Different conversation."
++        self.answer(svc, other)
++        nxt = self.next(req, first)
++        ids, *_ = self.prepare(svc, nxt)
++        self.assertEqual(ids, self.canonical(svc, nxt))
++
++    def test_eos_is_kept_once_and_noncanonical_tokens_chain_across_turns(self):
++        svc, req = self.service(), self.request()
++        for turn in range(4):
++            result, prompt = self.answer(svc, req)
++            nxt = self.next(req, result, content=f"next {turn}")
++            ids, *_ = self.prepare(svc, nxt)
++            prefix = prompt + svc.engine.script
++            self.assertEqual(ids[:len(prefix)], prefix)
++            self.assertEqual(ids.count(svc.tok.HTML), turn + 1)
++            self.assertEqual(ids[len(prefix)], ord("\n"))
++            req = nxt
++
++    def test_large_mapping_uses_eight_bytes_per_canonical_and_raw_token_pair(self):
++        svc, req = self.service(), self.request()
++        req["messages"][-1]["content"] = "large context " * 8000
++        self.answer(svc, req)
++        entry = svc._raw_continuation
++        self.assertGreater(len(entry.raw_ids), 100000)
++        payload_bytes = sum(a.buffer_info()[1] * a.itemsize for a in (entry.canonical_ids, entry.raw_ids))
++        self.assertEqual(payload_bytes, 4 * (len(entry.canonical_ids) + len(entry.raw_ids)))
++
++    def test_stream_and_collect_reasoning_disagreement_is_not_mapped(self):
++        svc, req = self.service('same</think>\n\nsame'), self.request()
++        result, _ = self.answer(svc, req)
++        self.assertNotIn("reasoning_content", result["choices"][0]["message"])
++        self.assertIsNone(svc._raw_continuation)
++
++    def test_template_that_cannot_render_completed_history_does_not_break_reply(self):
++        svc, req = self.service(), self.request()
++        original = svc.template
++        class RejectHistory:
++            def render(self, messages, **kwargs):
++                if any(m["role"] == "assistant" for m in messages):
++                    raise ValueError("this template accepts no assistant history")
++                return original.render(messages, **kwargs)
++        svc.template = RejectHistory()
++        result, _ = self.answer(svc, req)
++        self.assertEqual(result["choices"][0]["message"]["content"], "<span>hello</span>")
++        self.assertIsNone(svc._raw_continuation)
++
++    def test_changed_tools_ignored_by_template_still_miss(self):
++        svc, req = self.service(), self.request(tools=[{"type": "function", "function": {"name": "read"}}])
++        original = svc.template
++        class IgnoreTools:
++            def render(self, messages, tools=None, **kwargs):
++                return original.render(messages, tools=None, **kwargs)
++        svc.template = IgnoreTools()
++        result, _ = self.answer(svc, req)
++        nxt = self.next(req, result)
++        nxt["tools"][0]["function"]["name"] = "other"
++        ids, *_ = self.prepare(svc, nxt)
++        self.assertEqual(ids, self.canonical(svc, nxt))
++
++    def test_real_bpe_noncanonical_output_and_merged_new_tail(self):
++        from strata_tokenizer import Tokenizer, BYTE_TO_UNICODE
++        tokens = [BYTE_TO_UNICODE[b] for b in range(256)]
++        types = [1] * 256
++        merges = ["< s", "<s p", "<sp a", "<spa n", "n e", "ne x", "nex t"]
++        for merge in merges:
++            tokens.append("".join(merge.split(" ")))
++            types.append(1)
++        tokens += AlternativeTokenizer.SPECIALS
++        types += [4 if t in AlternativeTokenizer.ALWAYS else 3 for t in AlternativeTokenizer.SPECIALS]
++        tok = Tokenizer(tokens, merges, types)
++        engine = MockEngine(tok, "done</think>\n\n<span>ok</span>", max_context=10000)
++        merged = tok.encode("<span")[0]
++        self.assertEqual(tok.encode("<span"), [merged])
++        at = engine.script.index(merged)
++        engine.script[at:at + 1] = list(b"<span")
++        svc = Service(engine, tok, ChatTemplate(ROOT / "serve/chat_template.jinja"), raw_token_continuation=True)
++        req = self.request()
++        first, prompt = self.answer(svc, req)
++        nxt = self.next(req, first, content="next next <span>")
++        ids, *_ = self.prepare(svc, nxt)
++        self.assertEqual(ids[:len(prompt) + len(engine.script)], prompt + engine.script)
++        self.assertNotEqual(ids, self.canonical(svc, nxt))
++        self.assertIn(tok.encode("next")[0], ids[len(prompt) + len(engine.script):])
++
++    def test_opt_in_requires_json_boolean_true(self):
++        with patch("serve.server.drafting_card_class", return_value="unknown"), \
++                patch("serve.server.drafting.detect_hardware", return_value=(None, [])):
++            for value in (False, None, 0, 1, "true", "false"):
++                self.assertNotIn("--raw-token-continuation", engine_args({"args": [], "raw_token_continuation": value}))
++
++    def test_different_eos_cannot_replace_template_turn_terminator(self):
++        svc, req = self.service(), self.request()
++        other_eos = svc.tok.encode("<|endoftext|>", parse_special=True)[0]
++        self.assertIn(other_eos, svc.stop_ids)
++        self.assertNotEqual(other_eos, svc.engine.script[-1])
++        svc.engine.script[-1] = other_eos
++        result, _ = self.answer(svc, req)
++        self.assertEqual(result["choices"][0]["finish_reason"], "stop")
++        self.assertIsNone(svc._raw_continuation)
++        nxt = self.next(req, result)
++        ids, *_ = self.prepare(svc, nxt)
++        self.assertEqual(ids, self.canonical(svc, nxt))
++
++    def test_main_explicit_native_flag_also_enables_service_mapping(self):
++        import serve.server as server
++        class Captured(Exception):
++            pass
++        for cfg in ({"args": ["--raw-token-continuation"]},
++                    {"args": [], "user_args": ["--raw-token-continuation"], "raw_token_continuation": False}):
++            with self.subTest(cfg=cfg), tempfile.TemporaryDirectory() as directory:
++                config = Path(directory) / "config.json"
++                config.write_text(json.dumps(cfg), encoding="utf-8")
++                seen = {}
++                def capture_service(*args, **kwargs):
++                    seen.update(kwargs)
++                    raise Captured()
++                with patch.object(server, "Service", side_effect=capture_service), \
++                        patch.object(sys, "argv", ["server.py", "--engine", "mock", "--config", str(config)]):
++                    with self.assertRaises(Captured):
++                        server.main()
++                self.assertIs(seen["raw_token_continuation"], True)
++
++    def test_effective_enable_predicate_and_native_flags_stay_paired(self):
++        import serve.server as server
++        flag = "--raw-token-continuation"
++        cases = [({}, False), ({"raw_token_continuation": False}, False),
++                 ({"raw_token_continuation": True}, True),
++                 ({"raw_token_continuation": "true"}, False),
++                 ({"args": [flag], "raw_token_continuation": False}, True),
++                 ({"user_args": [flag], "raw_token_continuation": False}, True),
++                 ({"args": [flag], "user_args": [flag], "raw_token_continuation": True}, True)]
++        with patch("serve.server.drafting_card_class", return_value="unknown"), \
++                patch("serve.server.drafting.detect_hardware", return_value=(None, [])):
++            for extra, expected in cases:
++                cfg = {"args": [], **extra}
++                original = copy.deepcopy(cfg)
++                with self.subTest(cfg=cfg):
++                    self.assertIs(server.raw_token_continuation_enabled(cfg), expected)
++                    self.assertEqual(engine_args(cfg).count(flag), int(expected))
++                    self.assertEqual(cfg, original)
++
++    def test_enable_predicate_uses_user_args_merge_result(self):
++        import serve.server as server
++        cfg = {"args": ["--raw-token-continuation"], "user_args": ["--spec", "2"]}
++        with patch.object(server.user_args, "merge", return_value=["--spec", "2"]) as merge:
++            self.assertIs(server.raw_token_continuation_enabled(cfg), False)
++            merge.assert_called_once_with(cfg["args"], cfg["user_args"])
++
++
++if __name__ == "__main__":
++    unittest.main()

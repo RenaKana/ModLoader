@@ -1,0 +1,32 @@
+@property --monitor-request-thumb-inset {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 3.5px;
+}
+
+.monitor-request-table-scroll {
+  --monitor-request-thumb-inset: 3.5px;
+  transition: --monitor-request-thumb-inset 200ms var(--ease-out);
+}
+
+.monitor-request-table-scroll.is-scrolling {
+  --monitor-request-thumb-inset: 2px;
+}
+
+.monitor-request-table-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+/* Native thumb transitions are ignored, and border widths snap to whole pixels.
+   Animate only its painted inset, leaving the native hit area and layout fixed. */
+.monitor-request-table-scroll::-webkit-scrollbar-thumb {
+  --monitor-request-thumb-inset: inherit;
+  border: 0;
+  background-clip: border-box;
+  box-shadow: inset 0 0 0 var(--monitor-request-thumb-inset) var(--surface);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .monitor-request-table-scroll { transition: none; }
+}

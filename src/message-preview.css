@@ -1,0 +1,13 @@
+.message-preview-status { padding: 11px 13px; color: var(--muted); font-size: .82em; line-height: 1.6; }
+.message-preview-error { color: #976238; }
+.message-diagram-preview { min-width: 0; background: #fff; }
+.message-preview-tools { display: flex; justify-content: flex-end; padding: 5px 9px 0; }
+.message-preview-tools button { padding: 2px 5px; border: 0; border-radius: 4px; background: transparent; color: #72809a; font-size: .74em; line-height: 1.6; }
+.message-preview-tools button:hover { background: #f0f4fb; color: #4768ba; }
+.message-diagram-scroll { max-width: 100%; max-height: 34rem; overflow: auto; padding: 10px 14px 14px; }
+.message-diagram-scroll > img { display: block; width: auto; max-width: 100%; height: auto; margin-inline: auto; }
+.message-diagram-scroll.natural-size > img { max-width: none; margin-inline: 0; }
+.message-diagram-scroll:focus-visible { outline: 2px solid #a1baf0; outline-offset: -3px; }
+.message-preview-frame { height: clamp(280px, 42vh, 520px); min-height: 140px; max-width: 100%; overflow: auto; resize: vertical; background: #fff; }
+.message-preview-frame > iframe { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
+.message-preview-measure { position: absolute; left: -100000px; top: 0; visibility: hidden; pointer-events: none; }

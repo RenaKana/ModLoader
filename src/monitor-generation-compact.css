@@ -1,0 +1,45 @@
+.panel.monitor-compact-generation { padding: 16px 20px 18px; border-radius: 10px; min-width: 0; box-shadow: none; margin-bottom: 24px; }
+.monitor-compact-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 28px; margin-bottom: 6px; }
+.monitor-compact-switches { display: flex; align-items: center; gap: 20px; }
+.monitor-compact-generation .monitor-phase-toggle, .monitor-window-cycle { border: 0; border-radius: 0; box-shadow: none; background: transparent; padding: 2px 0; margin: 0; color: var(--blue); font: inherit; font-size: calc(15px * var(--font-scale)); min-height: 28px; text-align: left; cursor: pointer; }
+.monitor-compact-generation .monitor-phase-toggle { width: 76px; }
+.monitor-compact-generation .monitor-phase-toggle:hover, .monitor-window-cycle:hover { color: var(--ink); }
+.monitor-window-slot { display: inline-block; width: 50px; }
+.monitor-window-cycle { color: var(--muted); font-size: calc(13px * var(--font-scale)); font-variant-numeric: tabular-nums; }
+.monitor-compact-identity { display: flex; min-width: 0; color: var(--muted); font-size: calc(13px * var(--font-scale)); text-align: right; white-space: nowrap; }
+.monitor-compact-model { overflow: hidden; text-overflow: ellipsis; }
+.monitor-compact-body { display: grid; grid-template-columns: minmax(0, 1fr) 260px; align-items: center; gap: 18px; }
+.monitor-compact-main { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; }
+.monitor-rate-readout { flex: 0 1 auto; width: max-content; min-width: min(100%, calc(180px * var(--font-scale))); max-width: 100%; }
+.monitor-compact-generation .monitor-speed-current { display: block; font-size: calc(34px * var(--font-scale)); line-height: 1.3; margin: 0; letter-spacing: -.5px; }
+.monitor-compact-generation .monitor-speed-current strong { font-weight: 600; }
+.monitor-compact-generation .monitor-speed-current small { display: block; color: var(--muted); font-size: calc(12px * var(--font-scale)); margin-left: 0; line-height: 1.5; }
+.monitor-compact-generation .monitor-speed-note { font-size: calc(13px * var(--font-scale)); margin-top: 5px; }
+.monitor-speed-time { display: block; margin-top: 5px; color: var(--muted); font-size: calc(12px * var(--font-scale)); }
+.monitor-compact-generation .monitor-generation-chart { flex: 1 1 calc(210px * var(--font-scale)); min-width: 0; margin: 5px 0 0; }
+.monitor-compact-generation .monitor-generation-graph, .monitor-compact-generation .monitor-generation-chart svg { height: 190px; }
+.monitor-compact-generation .monitor-generation-ticks, .monitor-compact-generation .trend-axis { font-size: calc(12px * var(--font-scale)); }
+.monitor-compact-generation .trend-axis { margin-top: 5px; }
+.monitor-compact-generation .monitor-generation-empty { font-size: calc(12px * var(--font-scale)); }
+.monitor-compact-aside { padding-left: 17px; border-left: 1px solid var(--line); min-width: 0; }
+.monitor-compact-generation .monitor-request-group { border: 0; margin: 0; padding: 0; }
+.monitor-compact-generation .monitor-request-live { display: flex; flex-wrap: wrap; gap: 10px 14px; }
+.monitor-compact-generation .monitor-request-live > div { flex: 1 1 auto; min-width: calc(50% - 7px); max-width: 100%; }
+.monitor-compact-generation .monitor-request-live dt { font-size: calc(12px * var(--font-scale)); }
+.monitor-compact-generation .monitor-request-live dd { font-size: calc(16px * var(--font-scale)); margin: 3px 0 0; }
+.monitor-context-compact { color: var(--muted); font-size: calc(12px * var(--font-scale)); margin-top: 9px; }
+.monitor-generation-idle { padding: 20px 0; color: var(--muted); font-size: calc(13px * var(--font-scale)); }
+@media (max-width: 900px) {
+  .monitor-compact-body { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .monitor-compact-aside { border-left: 0; border-top: 1px solid var(--line); padding: 10px 0 0; }
+  .monitor-compact-generation .monitor-request-live > div { min-width: calc(25% - 10.5px); }
+}
+@media (max-width: 520px) {
+  .panel.monitor-compact-generation { max-width: calc(100vw - 36px); }
+  .monitor-compact-heading { flex-wrap: wrap; }
+  .monitor-compact-identity { width: 100%; white-space: normal; text-align: left; }
+  .monitor-compact-model { max-width: 65%; white-space: nowrap; }
+  .monitor-compact-main { align-items: stretch; }
+  .monitor-compact-generation .monitor-generation-chart { flex-basis: 100%; }
+  .monitor-compact-generation .monitor-request-live > div { min-width: calc(50% - 7px); }
+}

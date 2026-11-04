@@ -1,0 +1,34 @@
+.app-tooltip {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  width: max-content;
+  max-width: min(28rem, calc(100vw - 16px));
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 5px 18px #252c431a, 0 1px 4px #252c430a;
+  font-family: inherit;
+  font-size: max(12px, calc(12px * var(--font-scale, 1)));
+  font-weight: 400;
+  line-height: 1.55;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(var(--tooltip-shift, 3px));
+  transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out), display 160ms allow-discrete, overlay 160ms allow-discrete;
+}
+.app-tooltip:popover-open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.app-tooltip[data-instant] { transition-duration: 0ms; }
+.app-tooltip[data-tooltip-format="chat-title"] { max-height: min(calc(100dvh - 16px), var(--tooltip-max-height, 100dvh)); overflow: auto; white-space: normal; }
+.app-tooltip[data-tooltip-format="chat-title"] .chat-title { white-space: normal; }
+@starting-style {
+  .app-tooltip:popover-open { opacity: 0; transform: translateY(var(--tooltip-shift, 3px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-tooltip, .app-tooltip:popover-open { transform: none; }
+  @starting-style { .app-tooltip:popover-open { transform: none; } }
+}

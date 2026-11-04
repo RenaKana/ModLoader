@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "patch_revision": "raw-token-continuation-v2",
+  "native_patch": "native.patch",
+  "native_base_commit": "6f8800aefe27819ac89545c86f7686c094f099a4",
+  "native_base_patch": "../strata-prefetch/startup-expert-prefetch.patch",
+  "server_patch": "server.patch",
+  "server_base_runtime": "strata-0.2.4-d9681ba5/Strata-96ca4383c7b05a8a3e6064c65d9e9977d4b3bb59",
+  "server_config_opt_in": {
+    "raw_token_continuation": true
+  },
+  "server_args_opt_in": ["--raw-token-continuation"],
+  "native_flag": "--raw-token-continuation",
+  "default_enabled": false
+}

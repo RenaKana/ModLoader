@@ -1,0 +1,23 @@
+.html-preview-header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.html-preview-header.message-code-label { padding: 7px 12px; }
+.html-preview-kind { margin-left: 10px; color: #8a95a8; font: 12px 'Outfit', 'Microsoft YaHei UI', sans-serif; }
+.html-preview-actions { display: flex; align-items: center; gap: 5px; margin-left: auto; flex-wrap: wrap; }
+.html-preview-header button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 30px; padding: 5px 8px; border: 0; border-radius: 6px; color: #647797; background: transparent; font: 13px 'Outfit', 'Microsoft YaHei UI', sans-serif; cursor: pointer; }
+.html-preview-header button:hover:not(:disabled) { color: #4768ba; background: #edf2fb; }
+.html-preview-header button:focus-visible, .html-preview-source:focus-visible { outline: 2px solid #a1baf0; outline-offset: -2px; }
+.html-preview-header button:disabled { opacity: .55; cursor: wait; }
+.html-preview-feedback { padding: 6px 12px; background: #f7f9fc; color: #55705e; font-size: 12px; }
+.html-preview-feedback.is-error { color: #a34f3f; }
+.html-preview-dialog { position: fixed; inset: 0; width: calc(100vw - 48px); height: calc(100dvh - 48px); max-width: none; max-height: none; margin: auto; padding: 0; border: 1px solid #dce5f3; border-radius: 14px; background: #fff; color: #334155; box-shadow: 0 20px 70px #25374c33; overflow: hidden; }
+.html-preview-dialog[open] { display: flex; flex-direction: column; }
+.html-preview-dialog::backdrop { background: #25374c55; }
+.html-preview-dialog > .html-preview-header { flex-shrink: 0; padding: 10px 14px; border-bottom: 1px solid #e4eaf3; background: #fafbfe; }
+.html-preview-dialog .html-preview-header > strong { font: 600 13px Consolas, 'Courier New', monospace; color: #647797; }
+.html-preview-views { display: flex; align-items: center; padding: 3px; gap: 3px; border-radius: 8px; background: #edf1f7; }
+.html-preview-views button[aria-pressed="true"] { background: #fff; color: #4768ba; box-shadow: 0 1px 3px #33415514; }
+.html-preview-header .html-preview-close { margin-left: 8px; }
+.html-preview-dialog > .html-preview-feedback { flex-shrink: 0; }
+.html-preview-canvas { flex: 1; min-height: 0; background: #fff; }
+.html-preview-canvas > iframe { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
+.html-preview-source { flex: 1; min-height: 0; margin: 0; padding: 20px 24px; overflow: auto; overscroll-behavior: contain; background: #fbfcfe; font: 13px/1.7 Consolas, 'Microsoft YaHei UI', monospace; tab-size: 2; }
+@media (max-width: 640px) { .html-preview-dialog { width: calc(100vw - 16px); height: calc(100dvh - 16px); border-radius: 10px; } .html-preview-header { gap: 8px; } .html-preview-kind { display: none; } .html-preview-header.message-code-label { padding-inline: 8px; } .html-preview-header button { padding-inline: 6px; } }

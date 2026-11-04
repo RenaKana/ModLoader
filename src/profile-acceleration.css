@@ -1,0 +1,30 @@
+.profile-acceleration { margin-top: 16px; padding-top: 14px; border-top: 1px solid #edf0f5; }
+.acceleration-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.acceleration-heading label, .resident-experts-toggle { display: flex; align-items: center; gap: 9px; color: #566780; font-size: calc(13px * var(--font-scale, 1)); }
+.acceleration-heading > span { color: #7b8493; font-size: calc(12px * var(--font-scale, 1)); }
+.profile-acceleration > p { margin: 7px 0 0; line-height: 1.6; overflow-wrap: anywhere; }
+.profile-acceleration .field { margin-top: 12px; }
+.acceleration-source { display: flex; align-items: center; gap: 8px; margin-top: 6px; color: #7b8493; font-size: calc(12px * var(--font-scale, 1)); }
+.resident-experts { grid-column: 1 / -1; }
+.resident-experts .field-help { margin: 7px 0 0 23px; }
+
+.capability-section { margin-top: 0; padding: 13px 0; border-top: 1px solid var(--soft-line); }
+.capability-section label { color: #475569; font-size: calc(13px * var(--font-scale, 1)); font-weight: 500; }
+.capability-section .field { margin: 0; }
+.capability-fields { margin: 12px 0 0 24px; padding-left: 14px; border-left: 2px solid #e3e9f3; display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+.capability-fields > .field { max-width: 100%; }
+.capability-fields .field:has(input[type='number']) { max-width: 220px; }
+.acceleration-heading > span { font-size: calc(12px * var(--font-scale, 1)); color: #667085; }
+
+.capability-fields:has(input[type='number']) { grid-template-columns: minmax(140px, 180px) minmax(0, 1fr); align-items: start; }
+.capability-fields > .field:last-child:nth-child(3) { grid-column: 1 / -1; }
+@media (max-width: 700px) { .capability-fields:has(input[type='number']) { grid-template-columns: minmax(0, 1fr); } }
+.engine-acceleration-mode { display: flex; align-items: center; gap: 12px; }
+.engine-acceleration-mode > .field { width: min(320px, 100%); margin: 0; }
+.engine-acceleration-mode > span { color: #667085; font-size: calc(12px * var(--font-scale, 1)); }
+.engine-acceleration > p { margin: 8px 0 0; line-height: 1.6; overflow-wrap: anywhere; }
+.engine-acceleration .engine-acceleration-fields { padding-top: 12px; }
+.engine-acceleration-fields > div { min-width: 0; }
+.engine-acceleration-fields > div > .field { margin-bottom: 0; }
+.engine-acceleration-fields > div > .field-help { margin: 6px 0 0; }
+.engine-acceleration-fields > div:has(.input-with-button) { grid-column: 1 / -1; }

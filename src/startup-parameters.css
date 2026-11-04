@@ -1,0 +1,21 @@
+.startup-parameters { min-width: 0; }
+.startup-parameters-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 10px; min-height: 30px; }
+.startup-code { border: 1px solid var(--line); border-radius: 10px; background: #f8fbff; max-height: 370px; overflow: auto; }
+.startup-code:focus-within { border-color: #8ea2ff; box-shadow: 0 0 0 3px #4768f20d; }
+.startup-code-lines { display: grid; grid-template-columns: 46px minmax(0, 1fr); min-width: 100%; width: max-content; }
+.startup-code-gutter, .startup-code-paint, .startup-code-input textarea { margin: 0; font: 13px/24px var(--mono); letter-spacing: normal; tab-size: 2; white-space: pre; }
+.startup-code-gutter { padding: 13px 11px 13px 0; text-align: right; color: #98a3b5; user-select: none; pointer-events: none; position: sticky; left: 0; background: #f8fbff; z-index: 4; }
+.startup-code-input { position: relative; min-width: 0; }
+.startup-code-paint { padding: 13px 18px 13px 0; min-height: 264px; color: var(--ink); position: relative; z-index: 2; pointer-events: none; }
+.startup-code-input textarea { position: absolute; inset: 0; height: 100%; width: 100%; min-height: 264px; padding: 13px 18px 13px 0; border: 0; border-radius: 0; background: transparent; color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--ink); resize: none; box-shadow: none; z-index: 1; overflow: hidden; }
+.startup-code-input textarea:focus { box-shadow: none; }
+.startup-code-input textarea::selection { background: #4768f230; }
+.startup-parameter-error { background: #ffe0e4; color: #a52640; border-radius: 3px; box-shadow: 0 0 0 1px #e58d9e66; pointer-events: auto; cursor: text; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.startup-parameter-error:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+.startup-parameters-meta { display: flex; justify-content: space-between; gap: 12px; margin: 8px 0 16px; min-height: 18px; color: var(--muted); font-size: 12px; }
+.startup-parameter-count[data-tooltip] { cursor: help; }
+.startup-parameter-announcement { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.startup-preview-error { color: var(--muted); font-size: 13px; margin: 10px 0; overflow-wrap: anywhere; }
+.startup-effective-config { margin-top: 12px; color: var(--muted); font-size: 13px; }
+.startup-effective-config summary { cursor: pointer; }
+.startup-effective-config pre { padding: 12px; margin-bottom: 0; background: #f8fbff; border: 1px solid var(--soft-line); border-radius: 8px; overflow: auto; max-height: 280px; font: 12px/1.65 var(--mono); color: var(--ink); }

@@ -1,0 +1,19 @@
+# Relevant unmodified samples from ninfer-basic-88d19896/native-after.prom.
+# HELP ninfer_prompt_tokens_total Full input tokens counted once on initial binding.
+# TYPE ninfer_prompt_tokens_total counter
+ninfer_prompt_tokens_total 34
+# HELP ninfer_generation_tokens_total Committed output tokens, including first and control tokens.
+# TYPE ninfer_generation_tokens_total counter
+ninfer_generation_tokens_total 4
+# HELP ninfer_spec_decode_rounds_total Native speculative verification rounds.
+# TYPE ninfer_spec_decode_rounds_total counter
+ninfer_spec_decode_rounds_total 0
+# HELP ninfer_spec_decode_draft_tokens_total Draft tokens evaluated by native verification.
+# TYPE ninfer_spec_decode_draft_tokens_total counter
+ninfer_spec_decode_draft_tokens_total 0
+# HELP ninfer_spec_decode_accepted_tokens_total Draft tokens accepted by native verification.
+# TYPE ninfer_spec_decode_accepted_tokens_total counter
+ninfer_spec_decode_accepted_tokens_total 0
+# HELP ninfer_spec_decode_fallback_steps_total Speculative fallback steps without drafts.
+# TYPE ninfer_spec_decode_fallback_steps_total counter
+ninfer_spec_decode_fallback_steps_total 0

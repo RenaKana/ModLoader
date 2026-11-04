@@ -1,0 +1,23 @@
+html { background: #fff; color-scheme: light; overflow: hidden; }
+body { margin: 0; color: #252528; font: 14px/1.85 'Microsoft YaHei UI', 'Microsoft YaHei', system-ui, sans-serif; overflow-wrap: anywhere; }
+body > main { display: flow-root; }
+* { box-sizing: border-box; }
+main > :first-child { margin-top: 0; }
+main > :last-child { margin-bottom: 0; }
+h1, h2, h3, h4, h5, h6 { margin: 1.2em 0 .5em; line-height: 1.4; font-weight: 650; }
+h1 { font-size: 1.65em; } h2 { font-size: 1.4em; } h3 { font-size: 1.2em; }
+p, ul, ol, blockquote, pre { margin: .8em 0; }
+ul, ol { padding-left: 1.8em; }
+li { margin: .25em 0; }
+a { color: #4768f2; text-underline-offset: 3px; cursor: pointer; }
+a:focus-visible, summary:focus-visible { outline: 2px solid #4768f2; outline-offset: 3px; }
+img { max-width: 100%; height: auto; }
+pre { overflow: auto; padding: 12px 14px; border: 1px solid #e4eaf3; border-radius: 9px; background: #f7f9fc; white-space: pre; line-height: 1.6; }
+code { font-family: Consolas, monospace; font-size: .9em; background: #f0f3f8; border-radius: 4px; padding: .1em .3em; }
+pre code { background: none; padding: 0; }
+table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+th, td { padding: 7px 11px; border: 1px solid #e0e6ef; text-align: left; }
+th { background: #f6f8fc; }
+blockquote { border-left: 3px solid #dce6f8; padding-left: 12px; color: #626f82; }
+hr { border: 0; border-top: 1px solid #e4eaf3; margin: 1.4em 0; }
+summary { cursor: pointer; }

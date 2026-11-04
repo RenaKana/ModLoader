@@ -1,0 +1,357 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -290,7 +290,11 @@
+     add_compile_definitions(STRATA_EXPERIMENTAL_SM60=1)
+   endif()
+   message(STATUS "Strata: CUDA enabled, arch ${CMAKE_CUDA_ARCHITECTURES}")
+-  set(_strata_gpu_runtime_target CUDA::cudart)
++  if(CMAKE_CUDA_RUNTIME_LIBRARY STREQUAL "Static")
++    set(_strata_gpu_runtime_target CUDA::cudart_static)
++  else()
++    set(_strata_gpu_runtime_target CUDA::cudart)
++  endif()
+   set(_strata_gpu_blas_target CUDA::cublas)
+   set(_strata_gpu_include_directories ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+ elseif(STRATA_ENABLE_HIP)
+@@ -1913,6 +1917,9 @@
+   add_executable(message_boundary_test src/program/message_boundary_test.cpp)
+   target_include_directories(message_boundary_test PRIVATE include)
+   add_test(NAME message_boundary_test COMMAND message_boundary_test)
++  add_executable(decode_boundary_test src/program/decode_boundary_test.cpp)
++  target_include_directories(decode_boundary_test PRIVATE include)
++  add_test(NAME decode_boundary_test COMMAND decode_boundary_test)
+   # a layer split's ring override and the lend slots sized with it: the RAM copy must keep every borrowed slot (CPU)
+   add_executable(split_ring_test src/program/split_ring_test.cpp)
+   target_include_directories(split_ring_test PRIVATE include)
+--- a/include/strata/core/expert_source.hpp
++++ b/include/strata/core/expert_source.hpp
+@@ -900,8 +900,9 @@
+     bool startup_unbuffered() const { return startup_ub_; }
+     /// Every expert's bytes (n_layers x n_expert blobs).
+     uint64_t expert_bytes() const;
+-    /// #286, unbuffered: assembles the blobs of these pairs ahead of the `blob` calls that will ask for them (the
+-    /// GPU cache's fill from the profile) - one batch of reads instead of one blob at a time.  At most 64 pairs.
++    /// Assembles up to 64 pairs ahead of the `blob` calls that consume them: unbuffered sources, and on Windows
++    /// mapped GGUF shards. Waits for the batch's reads; buffers have the usual `staged_blob` lifetime. Other mapped
++    /// sources stay unchanged. A missed prefetch is read by the later `blob`.
+     void prefetch_pairs(const std::pair<int32_t, int32_t>* pairs, int64_t n);
+     /// Mapped reads: asks the OS for these pairs' blobs ahead (platform::advise_willneed).  False when unbuffered,
+     /// when read-ahead is off, or before `open`.
+--- a/src/core/expert_source.cpp
++++ b/src/core/expert_source.cpp
+@@ -2346,7 +2346,15 @@
+ }
+ 
+ void FileExpertSource::prefetch_pairs(const std::pair<int32_t, int32_t>* pairs, int64_t n) {
+-    if (direct_.empty() || pairs == nullptr || n <= 0) return;   // unbuffered only: the mapped fill stays as it was
++    if (pairs == nullptr || n <= 0) return;
++    if (direct_.empty()) {
++#if defined(_WIN32)
++        // fill_many's mapped batch uses the GGUF's three role slices, not an experts.bin mapping.
++        if (base_ == nullptr || unmapped_ || role_ptr_.empty()) return;
++#else
++        return;
++#endif
++    }
+     std::vector<Fill> todo;
+     {
+         std::lock_guard<std::mutex> lk(stage_mu_);
+--- a/src/program/generate.cpp
++++ b/src/program/generate.cpp
+@@ -104,6 +104,7 @@
+ #include "strata/program/prefill_plan.hpp"
+ #include "strata/program/draft_kv_plan.hpp"
+ #include "strata/program/message_boundary.hpp"
++#include "strata/program/decode_boundary.hpp"
+ #include "strata/spec/draft_policy.hpp"
+ #include "strata/spec/draft_vocab.hpp"
+ #include "strata/spec/window_rule.hpp"
+@@ -766,6 +767,7 @@
+     /// trace is what the plan's `h = 0.6447` refers to, and compulsory-miss measured 0.4864 because it fills
+     /// with whatever the prompt touched FIRST.  Empty means no profile.
+     std::string expert_profile;
++    bool startup_expert_prefetch = false; ///< Windows mapped GGUF: synchronous batches for the startup profile fill
+     /// #477 (--serve, opt-in): where to save what the adaptive tier learned, as a profile `--expert-profile` reads
+     /// (the resident experts first, then the routing counted since the start); on QUIT and every
+     /// `expert_profile_save_min` minutes between requests.  Empty (the default): nothing is counted or written.
+@@ -913,6 +915,7 @@
+     /// prompt again, the v0.1.2 behaviour).  One is the GDN recurrence of the 36 layers, the QSA indexer tails and
+     /// the PLE history (~118 MB of host RAM); the KV cache itself is positional and stays where it is.
+     int prompt_cache = 6;
++    bool raw_token_continuation = false; // opt-in: leave no unreturned EOS/length tail in the live state
+     int64_t conversation_cache_mib = -1; // host RAM for independent conversations; -1: not given, --serve sizes it from the free RAM (#3493), 0: off
+     int conversation_cache_slots = 4;
+     int64_t conversation_cache_min_free_mib = 2560;
+@@ -1095,6 +1098,7 @@
+                  "  --vision             --serve takes images too (GENI requests; embeddings from strata-vision)\n"
+                  "  --prompt-cache N     --serve: keep N conversation checkpoints between requests (default 6, ~118 MB\n"
+                  "                       of RAM each; 0 = read every prompt from the start)\n"
++                 "  --raw-token-continuation  --serve: commit only the returned decode prefix (default off; pair with server raw-token reuse)\n"
+                  "  --conversation-cache-mib N  --serve: RAM budget for parked conversations (default: sized from the free RAM, up to 8192; 0 = off)\n"
+                  "  --conversation-cache-slots N  --serve: at most N parked conversations (default 4)\n"
+                  "  --conversation-cache-min-free-mib N  --serve: RAM floor (under MemAvailable, the cgroup limits and\n"
+@@ -1200,6 +1204,8 @@
+                  "                       real graph that --stage-timing cannot give.  Prints and exits.\n"
+                  "  --expert-profile P   R4.2e: pre-load the VRAM tier from a `profile.bin` (see\n"
+                  "                       tools/make_profile.py) instead of admitting on first use.\n"
++                 "  --startup-expert-prefetch  Windows mapped GGUF: batch-read the startup profile before GPU uploads\n"
++                 "                       (opt-in; global admission only).\n"
+                  "  --expert-profile-save P  --serve, #477: save what the adaptive tier learned (the experts in\n"
+                  "                       VRAM, then the routing counted since the start) as a profile at P, on\n"
+                  "                       QUIT and every --expert-profile-save-every MIN minutes (default 10;\n"
+@@ -3436,6 +3442,7 @@
+             const std::string v = next("--expert-cache");
+             o.expert_cache = (v == "auto") ? -1 : std::atoi(v.c_str());
+         }
++        else if (a == "--startup-expert-prefetch") o.startup_expert_prefetch = true;
+         else if (a == "--expert-cache-device1" || a == "--expert-cache-device2" || a == "--expert-cache-device3") {
+             const size_t r = (size_t) (a.back() - '1');
+             const std::string v = next(a.c_str());
+@@ -3537,6 +3544,7 @@
+             else if (a == "--memory-limit-mib") o.memory_limit_mib = number;
+             else o.conversation_cache_slots = (int) number;
+         }
++        else if (a == "--raw-token-continuation") o.raw_token_continuation = true;
+         else if (a == "--prompt-cache-tail") o.prompt_cache_tail = true;
+         else if (a == "--prompt-cache-spread") o.prompt_cache_spread = true;
+         else if (a == "--prompt-cache-every") o.prompt_cache_every = std::max(0LL, std::atoll(next("--prompt-cache-every")));
+@@ -8000,6 +8008,14 @@
+     // admission finds no room and every non-profiled expert stays a CPU miss.  That is what makes the profile
+     // the policy rather than a hint.
+     int64_t prefilled = 0;
++    bool startup_prefetch = false;
++#if defined(_WIN32)
++    startup_prefetch = o.startup_expert_prefetch && srcp == &src && src.gguf_mode() && !src.unbuffered() &&
++                       !xcache.per_layer_admission() && xcache.slots() > 0 && !profile.empty();
++#endif
++    if (o.startup_expert_prefetch && !startup_prefetch)
++        std::fprintf(stderr, "strata generate: --startup-expert-prefetch not used (Windows mapped GGUF, a profile and "
++                             "global cache admission required)\n");
+     // STRATA_EXPERT_NIBBLE: each cache's converted slots (RECHECK reads them per request)
+     NibbleCache nib_x;
+     std::vector<NibbleCache> nib_st;
+@@ -8023,6 +8039,7 @@
+                          (long long) fill_ahead);
+         }
+         const auto fill_t0 = std::chrono::steady_clock::now();
++        double batch_read_s = 0.0, consume_upload_s = 0.0;
+         uint64_t fill_bytes = 0;
+         if (nib::any_on()) {   // STRATA_EXPERT_NIBBLE: the converted layers' pairs go through the 4-bit fill instead
+             int64_t conv = 0;
+@@ -8033,6 +8050,12 @@
+             }
+         }
+         for (int64_t i = 0; i < want; ++i) {
++            // Blocking uploads and nibble conversion consume the batch before it is reused.
++            if (startup_prefetch && i % 64 == 0) {
++                const auto batch_t0 = std::chrono::steady_clock::now();
++                read_batch(i);
++                batch_read_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - batch_t0).count();
++            }
+             if (!per_layer && srcp == &src && src.unbuffered() && i % 64 == 0) {
+                 if (ahead.valid()) ahead.get();
+                 else read_batch(i);
+@@ -8044,6 +8067,8 @@
+                 if (per_layer) continue;
+                 break;
+             }
++            const auto consume_t0 = startup_prefetch ? std::chrono::steady_clock::now()
++                                                     : std::chrono::steady_clock::time_point{};
+             const uint8_t* b = srcp->blob_stable(profile[(size_t) i].first, profile[(size_t) i].second);
+             const bool nib_pair = nib_x.active() && nib::layer(profile[(size_t) i].first).on;   // STRATA_EXPERT_NIBBLE
+             if (b == nullptr || !(nib_pair ? nib_x.add(profile[(size_t) i].first, profile[(size_t) i].second, slot, b, err)
+@@ -8053,6 +8078,8 @@
+                              (long long) i, err.c_str());
+                 return 1;
+             }
++            if (startup_prefetch)
++                consume_upload_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - consume_t0).count();
+             fill_bytes += strata::kernels::cpu::expert_layout().blob_bytes(profile[(size_t) i].first);
+             ++prefilled;
+         }
+@@ -8094,6 +8121,9 @@
+                              "slot 0 verified\n",
+                      (long long) prefilled, (long long) (per_layer ? xcache.slots() : want), fill_s,
+                      fill_s > 0 ? (double) fill_bytes / 1e6 / fill_s : 0.0);
++        if (startup_prefetch)
++            std::fprintf(stderr, "strata generate: startup expert prefetch: read/assemble %.3f s, consume/upload %.3f s "
++                                 "(64-pair synchronous batches)\n", batch_read_s, consume_upload_s);
+         if (std::getenv("STRATA_VERIFY_COMPLEMENT") != nullptr) {
+             // tests: the filled slots' checksum (each slot's blob read back and hashed, then the hashes in slot order)
+             std::vector<std::pair<int32_t, int64_t>> sl;   // (slot, blob bytes)
+@@ -17963,6 +17993,9 @@
+                     chain_kind = 0;
+                     int a = 0;
+                     while (a < A.T - 1 && A.tok[a + 1] == outp[(size_t) a]) ++a;
++                    // The verdict drives both the committed token ledger and front-stage rollback.
++                    a = strata::program::decode_window_keep(o.raw_token_continuation, outp.data(), a + 1,
++                                                            0, max_new - produced_n, o.eos_ids) - 1;
+ #if defined(STRATA_USE_HIP)
+                     if (stop_bound)
+                         a = strata::core::serve_stop_bound(a + 1, max_new - produced_n, outp.data(), [&](int32_t y) {
+@@ -18487,6 +18520,9 @@
+                 }
+                 int a = merged ? T - 1 : 0;   // a merged window commits every row, as the prompt windows do
+                 while (a < T - 1 && window[(size_t) a + 1] == outv[(size_t) a]) ++a;
++                // A merged window's prompt rows stay; trim only unreturned generated outputs.
++                a = strata::program::decode_window_keep(o.raw_token_continuation, outv.data(), a + 1,
++                                                        merged ? a : 0, max_new - produced_n, o.eos_ids) - 1;
+ #if defined(STRATA_USE_HIP)
+                 // A merged window contains prompt rows: every one must still be committed.
+                 // Otherwise do not cache accepted rows whose outputs this request cannot emit.
+--- a/tests/core/expert_layout_test.cpp
++++ b/tests/core/expert_layout_test.cpp
+@@ -27,6 +27,7 @@
+ #include <fstream>
+ #include <sstream>
+ #include <string>
++#include <utility>
+ #include <vector>
+ 
+ namespace fs = std::filesystem;
+@@ -216,6 +217,30 @@
+         const bool opened = fs.open(pack.string(), 2, NE, e1);
+         check(opened && fs.gguf_mode(), "FileExpertSource opens the GGUF in place" + (opened ? "" : ": " + e1));
+         if (opened) {
++            // Startup batches may mix layers and repeat a pair. Fetch before any blob() can populate the pool.
++            const std::pair<int32_t, int32_t> shuffled[] = {{1, 1}, {0, 0}, {1, 0}, {0, 1}, {1, 1}};
++            std::vector<std::pair<int32_t, int32_t>> pairs;
++            for (size_t i = 0; i < 64; ++i) pairs.push_back(shuffled[i % 5]);
++            fs.set_fetch_threads(2);
++            fs.prefetch_pairs(pairs.data(), (int64_t) pairs.size());
++#if defined(_WIN32)
++            const uint64_t prefetched = fs.file_blob_bytes();
++            check(prefetched == L.total, "startup batch assembles each distinct cross-shard pair once");
++            bool batch_same = true;
++            for (const auto& pair : pairs) {
++                const uint8_t* b = fs.blob_stable(pair.first, pair.second);
++                batch_same = batch_same && b != nullptr &&
++                             std::memcmp(b, dst.data() + L.blob_offset(pair.first, pair.second),
++                                         (size_t) L.blob_bytes(pair.first)) == 0;
++            }
++            check(batch_same && fs.file_blob_bytes() == prefetched,
++                  "all 64 startup consumers hit staged bytes, including repeats and variable blob sizes");
++            // A partial next batch consumes the same staged buffers without a fresh file read.
++            fs.prefetch_pairs(shuffled, 3);
++            check(fs.file_blob_bytes() == prefetched, "a partial repeated startup batch reuses the stage pool");
++#else
++            check(fs.file_blob_bytes() == 0, "mapped startup pair prefetch remains unchanged outside Windows");
++#endif
+             bool same = true, copies = true, transient = true;
+             std::vector<uint8_t> buf((size_t) std::max(f0.bytes, f1.bytes));
+             for (int64_t l = 0; l < 2; ++l)
+@@ -280,6 +305,9 @@
+         fb.set_gguf(A.string());
+         std::string e2;
+         const bool ob = fb.open(pack.string(), 2, NE, e2);
++        const std::pair<int32_t, int32_t> pairs[] = {{1, 1}, {0, 0}, {1, 1}};
++        fb.prefetch_pairs(pairs, 3);
++        check(fb.file_blob_bytes() == 0, "mapped experts.bin pair prefetch remains a no-op");
+         const uint8_t* b11 = ob ? fb.blob(1, 1) : nullptr;
+         check(ob && !fb.gguf_mode() && !fb.transient(1, 1) && b11 != nullptr &&
+                   std::memcmp(b11, dst.data() + L.blob_offset(1, 1), (size_t) L.blob_bytes(1)) == 0,
+--- a/tests/core/file_expert_source_test.cpp
++++ b/tests/core/file_expert_source_test.cpp
+@@ -615,6 +615,20 @@
+     return;
+ #endif
+     require(source.unbuffered(), "set_unbuffered succeeded but the source is not unbuffered");
++    const std::pair<int32_t, int32_t> pairs[] = {{1, 2}, {0, 1}, {1, 0}, {1, 2}};
++    const uint64_t before_pairs = source.file_blob_bytes();
++    source.prefetch_pairs(pairs, 4);
++    const uint64_t after_pairs = source.file_blob_bytes();
++    require(after_pairs - before_pairs == 3 * (uint64_t) BLOB,
++            "unbuffered pair prefetch did not read each distinct blob once");
++    for (const auto& pair : pairs) {
++        const uint8_t* b = source.blob_stable(pair.first, pair.second);
++        require(b != nullptr &&
++                    std::memcmp(b, bytes.data() + (size_t) (pair.first * (int64_t) layer_bytes +
++                                                          pair.second * (int64_t) BLOB), (size_t) BLOB) == 0,
++                "an unbuffered prefetched pair differs from the file");
++    }
++    require(source.file_blob_bytes() == after_pairs, "unbuffered pair consumers missed the prefetched stage buffers");
+     const int64_t batch[experts] = {0, 1, 2};
+     source.prefetch(1, batch, experts);   // layer 1 in one batch: three adjacent blobs
+     for (int64_t l = 0; l < layers; ++l)
+--- /dev/null
++++ b/include/strata/program/decode_boundary.hpp
+@@ -0,0 +1,21 @@
++#pragma once
++
++#include <algorithm>
++#include <cstdint>
++#include <vector>
++
++namespace strata::program {
++
++// Outputs[i] is predicted by input row i. The last returned output is not
++// consumed yet; a keep of i + 1 commits inputs [0, i], not that output itself.
++// Callers have a nonempty accepted window and at least one output left.
++inline int decode_window_keep(bool exact_stop, const int32_t* outputs, int accepted_count,
++                              int first_output, int64_t remaining, const std::vector<int64_t>& eos_ids) {
++    if (!exact_stop) return accepted_count;
++    const int end = first_output + static_cast<int>(std::min<int64_t>(accepted_count - first_output, remaining));
++    for (int i = first_output; i < end; ++i)
++        if (std::find(eos_ids.begin(), eos_ids.end(), static_cast<int64_t>(outputs[i])) != eos_ids.end()) return i + 1;
++    return end;
++}
++
++} // namespace strata::program
+--- /dev/null
++++ b/src/program/decode_boundary_test.cpp
+@@ -0,0 +1,55 @@
++#include "strata/program/decode_boundary.hpp"
++
++#include <algorithm>
++#include <cstdio>
++#include <vector>
++
++int main() {
++    using strata::program::decode_window_keep;
++    const std::vector<int64_t> stops{9, 99};
++    int checks = 0;
++    auto check = [&](const std::vector<int32_t>& out, int count, int first, int64_t remaining, int expected) {
++        ++checks;
++        const int kept = decode_window_keep(true, out.data(), count, first, remaining, stops);
++        if (kept != expected || decode_window_keep(false, out.data(), count, first, remaining, stops) != count) {
++            std::fprintf(stderr, "keep=%d expected=%d count=%d first=%d remaining=%lld\n",
++                         kept, expected, count, first, (long long) remaining);
++            return false;
++        }
++        // A next prompt consists of the old input row, returned outputs and a new
++        // message. Only its exact prefix may remain in the recurrent state.
++        std::vector<int32_t> inputs{7}, next{7};
++        inputs.insert(inputs.end(), out.begin(), out.begin() + count - 1);
++        next.insert(next.end(), out.begin(), out.begin() + expected);
++        next.push_back(88);
++        return std::equal(inputs.begin(), inputs.begin() + kept, next.begin());
++    };
++    if (!check({9, 10, 11, 12}, 4, 0, 20, 1) ||
++        !check({10, 99, 12, 13}, 4, 0, 20, 2) ||
++        !check({10, 11, 12, 9}, 4, 0, 20, 4) ||
++        !check({10, 11, 12, 13}, 4, 0, 1, 1) ||
++        !check({10, 11, 12, 13}, 4, 0, 3, 3) ||
++        !check({10, 11, 12, 13}, 4, 0, 1000000, 4) ||
++        !check({10, 11, 9, 13}, 2, 0, 20, 2) ||
++        !check({9, 10, 11, 99}, 4, 3, 1, 4) ||
++        !check({9}, 1, 0, 1, 1)) return 1;
++    // Cover every accepted-prefix/length/EOS position, including the merged
++    // first window whose earlier rows are prompt predictions, not output.
++    for (int count = 1; count <= 8; ++count) {
++        for (int first : {0, count - 1}) {
++            for (int remaining = 1; remaining <= count + 1; ++remaining) {
++                for (int stop = -1; stop < count; ++stop) {
++                    std::vector<int32_t> out(count, 10);
++                    if (stop >= 0) out[stop] = 9;
++                    int expected = first;
++                    for (int i = first; i < count && i - first < remaining; ++i) {
++                        expected = i + 1;
++                        if (out[i] == 9) break;
++                    }
++                    if (!check(out, count, first, remaining, expected)) return 1;
++                }
++            }
++        }
++    }
++    std::printf("decode_boundary_test OK (%d checks)\n", checks);
++}

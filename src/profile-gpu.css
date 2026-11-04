@@ -1,0 +1,10 @@
+.profile-gpu > summary { cursor: pointer; font-weight: 600; color: #48566c; padding: 12px 0; }
+.profile-gpu .parameter-grid { padding-top: 0; }
+.profile-gpu .parameter-grid > div { min-width: 0; margin-bottom: 14px; }
+.profile-gpu .parameter-grid .field { margin-bottom: 0; }
+.profile-gpu .field-help { margin: 5px 0 0; }
+.profile-gpu .gpu-device-field { grid-column: 1 / -1; }
+.gpu-device-choices { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.gpu-device-choices button { display: inline-flex; align-items: center; gap: 10px; border: 1px solid var(--soft-line); border-radius: 6px; padding: 5px 9px; background: #fafbfd; color: #48566c; font: inherit; font-size: calc(12px * var(--font-scale, 1)); cursor: pointer; }
+.gpu-device-choices button[aria-pressed="true"] { border-color: #6386cf; background: #edf3ff; color: #315a9e; }
+.gpu-device-choices button span { color: #667085; white-space: nowrap; }

@@ -1,0 +1,118 @@
+.runtime-management { container-type: inline-size; }
+.runtime-management .backend-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.runtime-management .backend-heading { padding: 15px 20px; margin: 0; border-bottom: 1px solid var(--soft-line); }
+.runtime-management .backend-heading > div { min-width: 0; }
+.runtime-management .backend-heading > .badge { flex-shrink: 0; }
+.runtime-management .backend-heading > div > span { font-size: calc(12px * var(--font-scale, 1)); color: #667085; }
+.runtime-management .backend-heading .backend-actions { display: flex; gap: 8px; flex: 0 0 auto; margin-left: 8px; }
+.runtime-management .runtime-list { margin: 0 20px; border-top: 0; }
+.runtime-management .runtime-row { display: flex; align-items: flex-start; gap: 20px; padding: 14px 0; }
+.runtime-row-info { min-width: 0; flex: 1; }
+.runtime-management .runtime-row-title { flex-wrap: nowrap; }
+.runtime-management .runtime-row-title strong { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #42536e; font-size: calc(14px * var(--font-scale, 1)); }
+.runtime-management .runtime-row-title .badge { flex-shrink: 0; font-size: calc(12px * var(--font-scale, 1)); }
+.runtime-management .runtime-row-path { color: #667085; font-size: calc(12px * var(--font-scale, 1)); }
+.runtime-usage { display: inline-flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; color: #667085; font-size: calc(12px * var(--font-scale, 1)); }
+.runtime-usage-details { display: contents; color: #667085; font-size: calc(12px * var(--font-scale, 1)); }
+.runtime-usage-details summary { width: fit-content; margin-top: 6px; cursor: pointer; color: #586a83; }
+.runtime-row-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 16px; }
+.runtime-usage-details::details-content { flex-basis: 100%; min-width: 0; }
+.runtime-startup-prefetch { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 7px; color: #667085; font-size: calc(12px * var(--font-scale, 1)); }
+.runtime-startup-prefetch > [role="status"] { display: inline-flex; align-items: center; gap: 6px; overflow-wrap: anywhere; }
+.runtime-startup-prefetch .button { font-size: inherit; min-height: 28px; padding: 4px 8px; }
+.runtime-startup-prefetch .error-notice { flex-basis: 100%; }
+.runtime-install-prefetch { margin: 8px 0 18px; }
+.runtime-usage-details p { line-height: 1.6; margin-top: 6px; overflow-wrap: anywhere; }
+.runtime-usage-details dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 8px 0; }
+.runtime-usage-details dd { margin: 0; overflow-wrap: anywhere; font-size: inherit; }
+.runtime-management .runtime-row-actions { gap: 6px; flex-wrap: wrap; flex-shrink: 0; justify-content: flex-end; margin: 0; }
+.runtime-management .runtime-row-actions .button { border: 1px solid var(--line); padding: 6px 9px; min-height: 32px; font-size: calc(12px * var(--font-scale, 1)); }
+.runtime-management .resource-value { align-items: baseline; gap: 6px; }
+.runtime-management .resource-value small { margin: 0; color: #667085; font-size: calc(13px * var(--font-scale, 1)); }
+@container (max-width: 1050px) {
+  .runtime-management .runtime-row { flex-wrap: wrap; gap: 10px; }
+  .runtime-management .runtime-row-info { flex-basis: 100%; }
+  .runtime-management .runtime-row-actions { justify-content: flex-start; }
+}
+@container (max-width: 650px) {
+  .runtime-management .backend-heading { flex-wrap: wrap; gap: 10px; }
+  .runtime-management .backend-heading .backend-actions { flex-basis: 100%; margin: 0; justify-content: flex-end; }
+}
+.runtime-subtle { color: #8491a4; font-size: calc(12px * var(--font-scale, 1)); line-height: 1.8; margin: 12px 0; overflow-wrap: anywhere; }
+.runtime-source-note { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid #e7edf5; border-radius: 10px; margin-bottom: 18px; font-size: calc(12px * var(--font-scale, 1)); color: #8996a9; }
+.runtime-source-note strong { color: #6881a4; font-weight: 550; }
+.runtime-install-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.runtime-install-fields > .field { min-width: 0; margin-bottom: 8px; }
+.runtime-catalog-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; font-size: calc(11px * var(--font-scale, 1)); color: #8a98ad; min-height: 22px; }
+.runtime-catalog-meta > span { display: inline-flex; gap: 6px; align-items: center; }
+.runtime-catalog-meta > .badge { margin-left: auto; }
+.runtime-install-preview { margin-top: 17px; border-top: 1px solid #e9eef6; padding-top: 17px; }
+.runtime-install-footnote { margin-top: 18px; border-top: 1px solid #edf1f7; padding-top: 10px; }
+.runtime-install-footnote .key-value { padding: 7px 0; }
+.runtime-manifest { min-width: 0; }
+.runtime-manifest h4 { color: #657d9e; font-size: calc(13px * var(--font-scale, 1)); margin-bottom: 9px; }
+.runtime-file-summary { display: flex; flex-wrap: wrap; gap: 5px 15px; justify-content: space-between; color: #8b98ab; font-size: calc(11px * var(--font-scale, 1)); margin-bottom: 10px; }
+.runtime-download-summary { flex-basis: 100%; color: #6e87aa; }
+.runtime-remove-files { margin: 18px 0; }
+.runtime-file-table { width: 100%; border-collapse: collapse; table-layout: fixed; color: #7c8ba1; font-size: calc(11px * var(--font-scale, 1)); }
+.runtime-file-table th { background: #f8fafd; padding: 7px 9px; text-align: left; font-weight: 500; color: #98a2b2; }
+.runtime-file-table td { border-bottom: 1px solid #eef2f7; padding: 9px; vertical-align: top; overflow-wrap: anywhere; }
+.runtime-file-table th:first-child { width: 65%; }
+.runtime-file-table th:nth-child(2) { width: 17%; }
+.runtime-file-table th:last-child { width: 18%; }
+.runtime-file-table td:first-child strong { display: block; color: #6882a6; line-height: 1.6; font-weight: 500; font-size: inherit; }
+.runtime-file-table td:first-child > span { display: block; margin-top: 4px; color: #97a2b3; line-height: 1.7; }
+.runtime-file-table .badge { font-size: calc(9px * var(--font-scale, 1)); white-space: normal; }
+.runtime-cache-label { display: block; color: #9aa5b5; margin-top: 5px; font-size: calc(10px * var(--font-scale, 1)); }
+.runtime-reference-heading { display: flex; align-items: center; gap: 8px; margin: 20px 0 10px; font-size: calc(12px * var(--font-scale, 1)); color: #8997aa; }
+.runtime-reference-heading h4 { color: #6b82a2; font-size: calc(13px * var(--font-scale, 1)); }
+.runtime-reference-list { list-style: none; padding: 0; margin: 0 0 20px; border-top: 1px solid #edf1f6; }
+.runtime-reference-list li { display: grid; gap: 4px; border-bottom: 1px solid #edf1f6; padding: 10px 0; color: #9aa5b5; font-size: calc(11px * var(--font-scale, 1)); overflow-wrap: anywhere; }
+.runtime-reference-list strong { color: #7189aa; font-size: calc(12px * var(--font-scale, 1)); font-weight: 500; }
+.runtime-profile-options { display: grid; gap: 14px; padding: 13px; border: 1px solid #e9eef5; border-radius: 10px; }
+.runtime-profile-options .check-option > div { min-width: 0; overflow-wrap: anywhere; }
+.runtime-switch-preview { margin-top: 18px; padding-top: 16px; border-top: 1px solid #e9eef5; font-size: calc(12px * var(--font-scale, 1)); color: #7f90a9; }
+.runtime-switch-preview h4 { font-size: calc(13px * var(--font-scale, 1)); color: #6b83a6; }
+.runtime-switch-preview ul { padding-left: 20px; line-height: 1.9; margin-top: 8px; }
+.runtime-installations .panel-heading { gap: 12px; flex-wrap: wrap; }
+.runtime-job-tabs { display: flex; gap: 3px; padding: 3px; border-radius: 9px; background: #f3f6fa; }
+.runtime-job-tabs button { border: 0; background: transparent; padding: 7px 10px; font: inherit; font-size: calc(11px * var(--font-scale, 1)); color: #98a3b4; border-radius: 7px; cursor: pointer; }
+.runtime-job-tabs button[aria-selected="true"] { color: #6684ae; background: #fff; box-shadow: 0 1px 4px #3d57790d; }
+.runtime-job-tabs span { margin-left: 6px; font-size: calc(10px * var(--font-scale, 1)); }
+.runtime-installation-list { padding: 0 23px 13px; }
+.runtime-install-job { padding: 18px 0; }
+.runtime-install-job:first-child { padding-top: 0; }
+.runtime-install-job .job-title { flex-wrap: wrap; min-width: 0; }
+.runtime-install-job .job-title strong { overflow-wrap: anywhere; white-space: normal; }
+.runtime-job-version { color: #8b99af; font-size: calc(11px * var(--font-scale, 1)); }
+.runtime-job-times { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 8px 0 12px; font-size: calc(10px * var(--font-scale, 1)); color: #a0aabc; }
+.runtime-job-progress { margin: 13px 0; }
+.runtime-progress > div:first-child { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; font-size: calc(11px * var(--font-scale, 1)); color: #8d9ab0; }
+.runtime-progress strong { color: #7e91af; font-weight: 500; }
+.runtime-progress .progress-track { margin: 7px 0 0; }
+.runtime-file-count { margin-top: 6px; color: #9ba7b8; font-size: calc(10px * var(--font-scale, 1)); }
+.runtime-current-file { margin: 11px 0 0; padding: 11px 13px; background: #f8fafd; border: 1px solid #edf2f8; border-radius: 9px; }
+.runtime-current-file > span { display: block; color: #94a2b6; font-size: calc(11px * var(--font-scale, 1)); margin-bottom: 9px; overflow-wrap: anywhere; line-height: 1.7; }
+.runtime-current-file > span > strong { font-size: inherit; font-weight: 400; color: #718cae; margin-left: 7px; }
+.runtime-job-message, .runtime-job-error { font-size: calc(12px * var(--font-scale, 1)); color: #8394ac; line-height: 1.8; margin: 9px 0; overflow-wrap: anywhere; }
+.runtime-job-error { color: #bd7580; }
+.runtime-job-stages { display: grid; gap: 17px; margin-top: 15px; max-height: min(45vh, 28rem); overflow-y: auto; overscroll-behavior: contain; padding-right: 8px; }
+.runtime-confirmation-note { margin-top: 13px; padding: 11px 13px; border: 1px solid #f0e7d1; border-radius: 9px; background: #fffcf5; display: grid; gap: 5px; color: #aa925d; font-size: calc(11px * var(--font-scale, 1)); }
+.runtime-confirmation-note strong { font-size: calc(12px * var(--font-scale, 1)); font-weight: 500; }
+.runtime-job-actions { display: flex; gap: 7px; flex-wrap: wrap; justify-content: flex-end; margin-top: 12px; }
+.runtime-task-empty { min-height: 65px; display: flex; align-items: center; justify-content: center; gap: 8px; color: #9aa7b8; font-size: calc(12px * var(--font-scale, 1)); }
+.runtime-history-toolbar, .runtime-history-pagination { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: #98a5b8; font-size: calc(11px * var(--font-scale, 1)); }
+.runtime-history-toolbar { margin-bottom: 14px; }
+.runtime-history-pagination { padding-top: 14px; border-top: 1px solid #edf1f7; justify-content: flex-end; }
+.runtime-history-files { color: #8a9ab3; font-size: calc(11px * var(--font-scale, 1)); margin-top: 12px; }
+.runtime-history-files > summary { cursor: pointer; width: fit-content; }
+@media (max-width: 790px) {
+  .runtime-install-fields { grid-template-columns: 1fr; gap: 4px; }
+  .runtime-installation-list { padding-left: 18px; padding-right: 18px; }
+  .runtime-file-table th:first-child { width: 54%; }
+  .runtime-file-table th:nth-child(2), .runtime-file-table th:last-child { width: 23%; }
+  .runtime-file-table td, .runtime-file-table th { padding-left: 6px; padding-right: 6px; }
+  .runtime-install-job > .job-top { align-items: flex-start; }
+  .runtime-install-job > .job-top > .badge { flex-shrink: 0; }
+  .runtime-history-pagination { justify-content: center; }
+}

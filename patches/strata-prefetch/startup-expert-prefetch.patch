@@ -1,0 +1,220 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 7ae5f1f..9a0013f 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -218,7 +218,11 @@ elseif(STRATA_ENABLE_CUDA)
+     add_compile_definitions(STRATA_EXPERIMENTAL_SM60=1)
+   endif()
+   message(STATUS "Strata: CUDA enabled, arch ${CMAKE_CUDA_ARCHITECTURES}")
+-  set(_strata_gpu_runtime_target CUDA::cudart)
++  if(CMAKE_CUDA_RUNTIME_LIBRARY STREQUAL "Static")
++    set(_strata_gpu_runtime_target CUDA::cudart_static)
++  else()
++    set(_strata_gpu_runtime_target CUDA::cudart)
++  endif()
+   set(_strata_gpu_blas_target CUDA::cublas)
+   set(_strata_gpu_include_directories ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+ elseif(STRATA_ENABLE_HIP)
+diff --git a/include/strata/core/expert_source.hpp b/include/strata/core/expert_source.hpp
+index 3ab77dc..bf89a1d 100644
+--- a/include/strata/core/expert_source.hpp
++++ b/include/strata/core/expert_source.hpp
+@@ -885,8 +885,9 @@ public:
+     bool startup_unbuffered() const { return startup_ub_; }
+     /// Every expert's bytes (n_layers x n_expert blobs).
+     uint64_t expert_bytes() const;
+-    /// #286, unbuffered: assembles the blobs of these pairs ahead of the `blob` calls that will ask for them (the
+-    /// GPU cache's fill from the profile) - one batch of reads instead of one blob at a time.  At most 64 pairs.
++    /// Assembles up to 64 pairs ahead of the `blob` calls that consume them: unbuffered sources, and on Windows
++    /// mapped GGUF shards. Waits for the batch's reads; buffers have the usual `staged_blob` lifetime. Other mapped
++    /// sources stay unchanged. A missed prefetch is read by the later `blob`.
+     void prefetch_pairs(const std::pair<int32_t, int32_t>* pairs, int64_t n);
+     /// Mapped reads: asks the OS for these pairs' blobs ahead (platform::advise_willneed).  False when unbuffered,
+     /// when read-ahead is off, or before `open`.
+diff --git a/src/core/expert_source.cpp b/src/core/expert_source.cpp
+index b8ad8fb..f43944a 100644
+--- a/src/core/expert_source.cpp
++++ b/src/core/expert_source.cpp
+@@ -2300,7 +2300,15 @@ void FileExpertSource::prefetch_end() {
+ }
+ 
+ void FileExpertSource::prefetch_pairs(const std::pair<int32_t, int32_t>* pairs, int64_t n) {
+-    if (direct_.empty() || pairs == nullptr || n <= 0) return;   // unbuffered only: the mapped fill stays as it was
++    if (pairs == nullptr || n <= 0) return;
++    if (direct_.empty()) {
++#if defined(_WIN32)
++        // fill_many's mapped batch uses the GGUF's three role slices, not an experts.bin mapping.
++        if (base_ == nullptr || unmapped_ || role_ptr_.empty()) return;
++#else
++        return;
++#endif
++    }
+     std::vector<Fill> todo;
+     {
+         std::lock_guard<std::mutex> lk(stage_mu_);
+diff --git a/src/program/generate.cpp b/src/program/generate.cpp
+index 7bafd68..a56004c 100644
+--- a/src/program/generate.cpp
++++ b/src/program/generate.cpp
+@@ -585,6 +585,7 @@ struct Options {
+     /// trace is what the plan's `h = 0.6447` refers to, and compulsory-miss measured 0.4864 because it fills
+     /// with whatever the prompt touched FIRST.  Empty means no profile.
+     std::string expert_profile;
++    bool startup_expert_prefetch = false; ///< Windows mapped GGUF: synchronous batches for the startup profile fill
+     /// #477 (--serve, opt-in): where to save what the adaptive tier learned, as a profile `--expert-profile` reads
+     /// (the resident experts first, then the routing counted since the start); on QUIT and every
+     /// `expert_profile_save_min` minutes between requests.  Empty (the default): nothing is counted or written.
+@@ -987,6 +988,8 @@ void usage() {
+                  "                       real graph that --stage-timing cannot give.  Prints and exits.\n"
+                  "  --expert-profile P   R4.2e: pre-load the VRAM tier from a `profile.bin` (see\n"
+                  "                       tools/make_profile.py) instead of admitting on first use.\n"
++                 "  --startup-expert-prefetch  Windows mapped GGUF: batch-read the startup profile before GPU uploads\n"
++                 "                       (opt-in; global admission only).\n"
+                  "  --expert-profile-save P  --serve, #477: save what the adaptive tier learned (the experts in\n"
+                  "                       VRAM, then the routing counted since the start) as a profile at P, on\n"
+                  "                       QUIT and every --expert-profile-save-every MIN minutes (default 10;\n"
+@@ -2559,6 +2562,7 @@ int main(int argc, char** argv) {
+             const std::string v = next("--expert-cache");
+             o.expert_cache = (v == "auto") ? -1 : std::atoi(v.c_str());
+         }
++        else if (a == "--startup-expert-prefetch") o.startup_expert_prefetch = true;
+         else if (a == "--expert-cache-device1" || a == "--expert-cache-device2" || a == "--expert-cache-device3") {
+             const size_t r = (size_t) (a.back() - '1');
+             const std::string v = next(a.c_str());
+@@ -6443,6 +6447,14 @@ int main(int argc, char** argv) {
+     // admission finds no room and every non-profiled expert stays a CPU miss.  That is what makes the profile
+     // the policy rather than a hint.
+     int64_t prefilled = 0;
++    bool startup_prefetch = false;
++#if defined(_WIN32)
++    startup_prefetch = o.startup_expert_prefetch && srcp == &src && src.gguf_mode() && !src.unbuffered() &&
++                       !xcache.per_layer_admission() && xcache.slots() > 0 && !profile.empty();
++#endif
++    if (o.startup_expert_prefetch && !startup_prefetch)
++        std::fprintf(stderr, "strata generate: --startup-expert-prefetch not used (Windows mapped GGUF, a profile and "
++                             "global cache admission required)\n");
+     if (!profile.empty() && srcp != nullptr) {
+         // #369 (dag08): per layer, a full layer skips only its own pairs - each layer takes its hottest experts until
+         // its range is full (one full layer used to end the whole fill, leaving most layers empty)
+@@ -6462,8 +6474,15 @@ int main(int argc, char** argv) {
+                          (long long) fill_ahead);
+         }
+         const auto fill_t0 = std::chrono::steady_clock::now();
++        double batch_read_s = 0.0, consume_upload_s = 0.0;
+         uint64_t fill_bytes = 0;
+         for (int64_t i = 0; i < want; ++i) {
++            // No layer epochs or cross-batch future: the blocking uploads consume this batch before the next read.
++            if (startup_prefetch && i % 64 == 0) {
++                const auto batch_t0 = std::chrono::steady_clock::now();
++                read_batch(i);
++                batch_read_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - batch_t0).count();
++            }
+             if (!per_layer && srcp == &src && src.unbuffered() && i % 64 == 0) {
+                 if (ahead.valid()) ahead.get();
+                 else read_batch(i);
+@@ -6475,6 +6494,8 @@ int main(int argc, char** argv) {
+                 if (per_layer) continue;
+                 break;
+             }
++            const auto consume_t0 = startup_prefetch ? std::chrono::steady_clock::now()
++                                                     : std::chrono::steady_clock::time_point{};
+             const uint8_t* b = srcp->blob_stable(profile[(size_t) i].first, profile[(size_t) i].second);
+             if (b == nullptr || !xcache.fill_slot_blocking(slot, b, err,
+                     (int64_t) strata::kernels::cpu::expert_layout().blob_bytes(profile[(size_t) i].first))) {
+@@ -6482,6 +6503,8 @@ int main(int argc, char** argv) {
+                              (long long) i, err.c_str());
+                 return 1;
+             }
++            if (startup_prefetch)
++                consume_upload_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - consume_t0).count();
+             fill_bytes += strata::kernels::cpu::expert_layout().blob_bytes(profile[(size_t) i].first);
+             ++prefilled;
+         }
+@@ -6500,6 +6523,9 @@ int main(int argc, char** argv) {
+                              "slot 0 verified\n",
+                      (long long) prefilled, (long long) (per_layer ? xcache.slots() : want), fill_s,
+                      fill_s > 0 ? (double) fill_bytes / 1e6 / fill_s : 0.0);
++        if (startup_prefetch)
++            std::fprintf(stderr, "strata generate: startup expert prefetch: read/assemble %.3f s, consume/upload %.3f s "
++                                 "(64-pair synchronous batches)\n", batch_read_s, consume_upload_s);
+         if (std::getenv("STRATA_VERIFY_COMPLEMENT") != nullptr) {
+             // tests: the filled slots' checksum (each slot's blob read back and hashed, then the hashes in slot order)
+             std::vector<std::pair<int32_t, int64_t>> sl;   // (slot, blob bytes)
+diff --git a/tests/core/expert_layout_test.cpp b/tests/core/expert_layout_test.cpp
+index ffdf1c6..869e8fd 100644
+--- a/tests/core/expert_layout_test.cpp
++++ b/tests/core/expert_layout_test.cpp
+@@ -27,6 +27,7 @@
+ #include <fstream>
+ #include <sstream>
+ #include <string>
++#include <utility>
+ #include <vector>
+ 
+ namespace fs = std::filesystem;
+@@ -216,6 +217,30 @@ void arena() {
+         const bool opened = fs.open(pack.string(), 2, NE, e1);
+         check(opened && fs.gguf_mode(), "FileExpertSource opens the GGUF in place" + (opened ? "" : ": " + e1));
+         if (opened) {
++            // Startup batches may mix layers and repeat a pair. Fetch before any blob() can populate the pool.
++            const std::pair<int32_t, int32_t> shuffled[] = {{1, 1}, {0, 0}, {1, 0}, {0, 1}, {1, 1}};
++            std::vector<std::pair<int32_t, int32_t>> pairs;
++            for (size_t i = 0; i < 64; ++i) pairs.push_back(shuffled[i % 5]);
++            fs.set_fetch_threads(2);
++            fs.prefetch_pairs(pairs.data(), (int64_t) pairs.size());
++#if defined(_WIN32)
++            const uint64_t prefetched = fs.file_blob_bytes();
++            check(prefetched == L.total, "startup batch assembles each distinct cross-shard pair once");
++            bool batch_same = true;
++            for (const auto& pair : pairs) {
++                const uint8_t* b = fs.blob_stable(pair.first, pair.second);
++                batch_same = batch_same && b != nullptr &&
++                             std::memcmp(b, dst.data() + L.blob_offset(pair.first, pair.second),
++                                         (size_t) L.blob_bytes(pair.first)) == 0;
++            }
++            check(batch_same && fs.file_blob_bytes() == prefetched,
++                  "all 64 startup consumers hit staged bytes, including repeats and variable blob sizes");
++            // A partial next batch consumes the same staged buffers without a fresh file read.
++            fs.prefetch_pairs(shuffled, 3);
++            check(fs.file_blob_bytes() == prefetched, "a partial repeated startup batch reuses the stage pool");
++#else
++            check(fs.file_blob_bytes() == 0, "mapped startup pair prefetch remains unchanged outside Windows");
++#endif
+             bool same = true, copies = true, transient = true;
+             std::vector<uint8_t> buf((size_t) std::max(f0.bytes, f1.bytes));
+             for (int64_t l = 0; l < 2; ++l)
+@@ -280,6 +305,9 @@ void arena() {
+         fb.set_gguf(A.string());
+         std::string e2;
+         const bool ob = fb.open(pack.string(), 2, NE, e2);
++        const std::pair<int32_t, int32_t> pairs[] = {{1, 1}, {0, 0}, {1, 1}};
++        fb.prefetch_pairs(pairs, 3);
++        check(fb.file_blob_bytes() == 0, "mapped experts.bin pair prefetch remains a no-op");
+         const uint8_t* b11 = ob ? fb.blob(1, 1) : nullptr;
+         check(ob && !fb.gguf_mode() && !fb.transient(1, 1) && b11 != nullptr &&
+                   std::memcmp(b11, dst.data() + L.blob_offset(1, 1), (size_t) L.blob_bytes(1)) == 0,
+diff --git a/tests/core/file_expert_source_test.cpp b/tests/core/file_expert_source_test.cpp
+index e162664..0fed154 100644
+--- a/tests/core/file_expert_source_test.cpp
++++ b/tests/core/file_expert_source_test.cpp
+@@ -583,6 +583,20 @@ void test_unbuffered_reads() {
+     return;
+ #endif
+     require(source.unbuffered(), "set_unbuffered succeeded but the source is not unbuffered");
++    const std::pair<int32_t, int32_t> pairs[] = {{1, 2}, {0, 1}, {1, 0}, {1, 2}};
++    const uint64_t before_pairs = source.file_blob_bytes();
++    source.prefetch_pairs(pairs, 4);
++    const uint64_t after_pairs = source.file_blob_bytes();
++    require(after_pairs - before_pairs == 3 * (uint64_t) BLOB,
++            "unbuffered pair prefetch did not read each distinct blob once");
++    for (const auto& pair : pairs) {
++        const uint8_t* b = source.blob_stable(pair.first, pair.second);
++        require(b != nullptr &&
++                    std::memcmp(b, bytes.data() + (size_t) (pair.first * (int64_t) layer_bytes +
++                                                          pair.second * (int64_t) BLOB), (size_t) BLOB) == 0,
++                "an unbuffered prefetched pair differs from the file");
++    }
++    require(source.file_blob_bytes() == after_pairs, "unbuffered pair consumers missed the prefetched stage buffers");
+     const int64_t batch[experts] = {0, 1, 2};
+     source.prefetch(1, batch, experts);   // layer 1 in one batch: three adjacent blobs
+     for (int64_t l = 0; l < layers; ++l)

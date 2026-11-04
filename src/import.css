@@ -1,0 +1,7 @@
+.folder-import-result { display: grid; gap: 12px; margin-top: 16px; min-width: 0; }
+.folder-import-counts { display: flex; flex-wrap: wrap; gap: 7px; }
+.folder-import-details { border: 1px solid #e4eaf4; border-radius: 12px; padding: 11px 13px; font-size: calc(13px * var(--font-scale, 1)); }
+.folder-import-details summary { color: #52627a; cursor: pointer; font-weight: 550; }
+.folder-import-entry { display: grid; gap: 4px; padding: 10px 0; border-bottom: 1px solid #edf0f5; line-height: 1.6; overflow-wrap: anywhere; }
+.folder-import-entry:last-child { border-bottom: 0; padding-bottom: 0; }
+.folder-import-entry .mono { font-size: calc(12px * var(--font-scale, 1)); color: #65748a; }

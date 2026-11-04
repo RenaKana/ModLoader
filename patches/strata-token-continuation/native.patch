@@ -1,0 +1,151 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1460,6 +1460,9 @@
+   add_executable(message_boundary_test src/program/message_boundary_test.cpp)
+   target_include_directories(message_boundary_test PRIVATE include)
+   add_test(NAME message_boundary_test COMMAND message_boundary_test)
++  add_executable(decode_boundary_test src/program/decode_boundary_test.cpp)
++  target_include_directories(decode_boundary_test PRIVATE include)
++  add_test(NAME decode_boundary_test COMMAND decode_boundary_test)
+   # a layer split's ring override and the lend slots sized with it: the RAM copy must keep every borrowed slot (CPU)
+   add_executable(split_ring_test src/program/split_ring_test.cpp)
+   target_include_directories(split_ring_test PRIVATE include)
+--- a/src/program/generate.cpp
++++ b/src/program/generate.cpp
+@@ -85,6 +85,7 @@
+ #include "strata/program/prefill_plan.hpp"
+ #include "strata/program/draft_kv_plan.hpp"
+ #include "strata/program/message_boundary.hpp"
++#include "strata/program/decode_boundary.hpp"
+ #include "strata/spec/draft_policy.hpp"
+ #include "strata/spec/draft_source.hpp"
+ #include "strata/spec/suffix_drafter.hpp"
+@@ -727,6 +728,7 @@
+     /// prompt again, the v0.1.2 behaviour).  One is the GDN recurrence of the 36 layers, the QSA indexer tails and
+     /// the PLE history (~118 MB of host RAM); the KV cache itself is positional and stays where it is.
+     int prompt_cache = 6;
++    bool raw_token_continuation = false; // opt-in: leave no unreturned EOS/length tail in the live state
+     int64_t conversation_cache_mib = -1; // host RAM for independent conversations; -1: not given, --serve sizes it from the free RAM (#3493), 0: off
+     int conversation_cache_slots = 4;
+     int64_t conversation_cache_min_free_mib = 2560;
+@@ -891,6 +893,7 @@
+                  "  --vision             --serve takes images too (GENI requests; embeddings from strata-vision)\n"
+                  "  --prompt-cache N     --serve: keep N conversation checkpoints between requests (default 6, ~118 MB\n"
+                  "                       of RAM each; 0 = read every prompt from the start)\n"
++                 "  --raw-token-continuation  --serve: commit only the returned decode prefix (default off; pair with server raw-token reuse)\n"
+                  "  --conversation-cache-mib N  --serve: RAM budget for parked conversations (default: sized from the free RAM, up to 8192; 0 = off)\n"
+                  "  --conversation-cache-slots N  --serve: at most N parked conversations (default 4)\n"
+                  "  --conversation-cache-min-free-mib N  --serve: RAM floor (under MemAvailable, the cgroup limits and\n"
+@@ -2664,6 +2667,7 @@
+             else if (a == "--memory-limit-mib") o.memory_limit_mib = number;
+             else o.conversation_cache_slots = (int) number;
+         }
++        else if (a == "--raw-token-continuation") o.raw_token_continuation = true;
+         else if (a == "--prompt-cache-tail") o.prompt_cache_tail = true;
+         else if (a == "--prompt-cache-spread") o.prompt_cache_spread = true;
+         else if (a == "--prompt-cache-every") o.prompt_cache_every = std::max(0LL, std::atoll(next("--prompt-cache-every")));
+@@ -14748,6 +14752,10 @@
+                     chain_kind = 0;
+                     int a = 0;
+                     while (a < A.T - 1 && A.tok[a + 1] == outp[(size_t) a]) ++a;
++                    // The same shortened verdict also drives the front-stage
++                    // rollback below; never shorten only the token ledger.
++                    a = strata::program::decode_window_keep(o.raw_token_continuation, outp.data(), a + 1,
++                                                            0, max_new - produced_n, o.eos_ids) - 1;
+                     if (!V1(A).pl_commit_async(a + 1, err)) return die(err);
+                     for (int i = 0; i <= a; ++i) consumed.push_back(A.tok[i]);
+                     draft_offered += A.T - 1;
+@@ -15133,6 +15141,11 @@
+                 }
+                 int a = merged ? T - 1 : 0;   // a merged window commits every row, as the prompt windows do
+                 while (a < T - 1 && window[(size_t) a + 1] == outv[(size_t) a]) ++a;
++                // Rows before the merged window's final row belong to the
++                // prompt. Otherwise commit only inputs leading to returned
++                // outputs; the final output remains the next unconsumed token.
++                a = strata::program::decode_window_keep(o.raw_token_continuation, outv.data(), a + 1,
++                                                        merged ? a : 0, max_new - produced_n, o.eos_ids) - 1;
+                 if (from_sfx) { ++sfx_windows; sfx_drafts += T - 1; sfx_ok += a; }
+                 if (chain_n > 0) { ++chain_windows; chain_drafts += chain_n; chain_ok += std::max(0, a - (T_mtp - 1)); }
+                 if (!from_sfx && !first_window)
+--- /dev/null
++++ b/include/strata/program/decode_boundary.hpp
+@@ -0,0 +1,21 @@
++#pragma once
++
++#include <algorithm>
++#include <cstdint>
++#include <vector>
++
++namespace strata::program {
++
++// Outputs[i] is predicted by input row i. The last returned output is not
++// consumed yet; a keep of i + 1 commits inputs [0, i], not that output itself.
++// Callers have a nonempty accepted window and at least one output left.
++inline int decode_window_keep(bool exact_stop, const int32_t* outputs, int accepted_count,
++                              int first_output, int64_t remaining, const std::vector<int64_t>& eos_ids) {
++    if (!exact_stop) return accepted_count;
++    const int end = first_output + static_cast<int>(std::min<int64_t>(accepted_count - first_output, remaining));
++    for (int i = first_output; i < end; ++i)
++        if (std::find(eos_ids.begin(), eos_ids.end(), static_cast<int64_t>(outputs[i])) != eos_ids.end()) return i + 1;
++    return end;
++}
++
++} // namespace strata::program
+--- /dev/null
++++ b/src/program/decode_boundary_test.cpp
+@@ -0,0 +1,55 @@
++#include "strata/program/decode_boundary.hpp"
++
++#include <algorithm>
++#include <cstdio>
++#include <vector>
++
++int main() {
++    using strata::program::decode_window_keep;
++    const std::vector<int64_t> stops{9, 99};
++    int checks = 0;
++    auto check = [&](const std::vector<int32_t>& out, int count, int first, int64_t remaining, int expected) {
++        ++checks;
++        const int kept = decode_window_keep(true, out.data(), count, first, remaining, stops);
++        if (kept != expected || decode_window_keep(false, out.data(), count, first, remaining, stops) != count) {
++            std::fprintf(stderr, "keep=%d expected=%d count=%d first=%d remaining=%lld\n",
++                         kept, expected, count, first, (long long) remaining);
++            return false;
++        }
++        // A next prompt consists of the old input row, returned outputs and a new
++        // message. Only its exact prefix may remain in the recurrent state.
++        std::vector<int32_t> inputs{7}, next{7};
++        inputs.insert(inputs.end(), out.begin(), out.begin() + count - 1);
++        next.insert(next.end(), out.begin(), out.begin() + expected);
++        next.push_back(88);
++        return std::equal(inputs.begin(), inputs.begin() + kept, next.begin());
++    };
++    if (!check({9, 10, 11, 12}, 4, 0, 20, 1) ||
++        !check({10, 99, 12, 13}, 4, 0, 20, 2) ||
++        !check({10, 11, 12, 9}, 4, 0, 20, 4) ||
++        !check({10, 11, 12, 13}, 4, 0, 1, 1) ||
++        !check({10, 11, 12, 13}, 4, 0, 3, 3) ||
++        !check({10, 11, 12, 13}, 4, 0, 1000000, 4) ||
++        !check({10, 11, 9, 13}, 2, 0, 20, 2) ||
++        !check({9, 10, 11, 99}, 4, 3, 1, 4) ||
++        !check({9}, 1, 0, 1, 1)) return 1;
++    // Cover every accepted-prefix/length/EOS position, including the merged
++    // first window whose earlier rows are prompt predictions, not output.
++    for (int count = 1; count <= 8; ++count) {
++        for (int first : {0, count - 1}) {
++            for (int remaining = 1; remaining <= count + 1; ++remaining) {
++                for (int stop = -1; stop < count; ++stop) {
++                    std::vector<int32_t> out(count, 10);
++                    if (stop >= 0) out[stop] = 9;
++                    int expected = first;
++                    for (int i = first; i < count && i - first < remaining; ++i) {
++                        expected = i + 1;
++                        if (out[i] == 9) break;
++                    }
++                    if (!check(out, count, first, remaining, expected)) return 1;
++                }
++            }
++        }
++    }
++    std::printf("decode_boundary_test OK (%d checks)\n", checks);
++}

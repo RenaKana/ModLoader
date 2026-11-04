@@ -1,0 +1,5 @@
+.operation-status { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; color: var(--muted, #667085); font-size: inherit; }
+.operation-status > svg { flex-shrink: 0; }
+.operation-status-message { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.operation-status-count, .operation-status-time { flex-shrink: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.operation-status progress { width: 56px; height: 5px; flex-shrink: 0; accent-color: #6386cf; }

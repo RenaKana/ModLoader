@@ -1,0 +1,70 @@
+body.mini-monitor-body { min-width: 0; height: 100dvh; overflow: hidden; background: #fff; }
+.mini-monitor-body #root { height: 100%; }
+.mini-frame { --mini-scale: 1; height: 100%; display: flex; flex-direction: column; background: #fff; color: #293447; border: 1px solid #dce3ed; overflow: hidden; container-type: inline-size; }
+.mini-frame * { box-sizing: border-box; }
+.mini-header { flex: 0 0 auto; min-height: 38px; display: flex; align-items: center; gap: 7px; margin: 3px 3px 0; padding: 0 7px 0 10px; -webkit-app-region: drag; user-select: none; }
+.mini-title-space { flex: 1; min-width: 8px; align-self: stretch; }
+.mini-status-dot { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; background: #9aa6b6; }
+.mini-status-dot.active, .mini-status-dot.idle { background: #13ae83; }
+.mini-status-dot.error { background: #c84c5e; }
+.mini-status { font-size: calc(11px * var(--mini-scale)); color: #7a8797; white-space: nowrap; }
+.mini-instance { min-width: 45px; max-width: 44%; flex: 0 1 auto; display: flex; align-items: center; gap: 4px; -webkit-app-region: no-drag; }
+.mini-instance select { appearance: none; block-size: auto; min-height: 26px; width: auto; max-width: 100%; border: 0; border-radius: 4px; padding: 2px 0; font-size: calc(12px * var(--mini-scale)); font-weight: 500; color: #404b5c; background: transparent; box-shadow: none; }
+.mini-instance svg { color: #929cac; }
+.mini-actions { display: flex; gap: 1px; flex: 0 0 auto; }
+.mini-icon { width: 27px; height: 27px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #788598; -webkit-app-region: no-drag; }
+.mini-icon.is-pinned { background: #f0f4ff; color: #4768f2; }
+.mini-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0; scrollbar-gutter: stable; scrollbar-width: thin; }
+/* The scrollbar uses the existing right inset rather than changing the number of columns. */
+.mini-content { display: flow-root; margin: 0 9px 9px; margin-right: max(1px, calc(9px - 100cqw + 100%)); }
+.mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(160px * var(--mini-scale))), 1fr)); gap: 6px; align-items: stretch; padding-top: 1px; }
+.mini-scroll:has([data-dragging='true']) { overflow-anchor: none; }
+.mini-metric { position: relative; min-width: 0; border: 1px solid transparent; border-radius: 7px; background: #f6f8fb; padding: calc(8px * var(--mini-scale)) calc(10px * var(--mini-scale)); text-align: left; cursor: grab; user-select: none; touch-action: none; -webkit-app-region: no-drag; }
+.mini-metric-label { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; height: calc(18px * var(--mini-scale)); font-size: calc(12px * var(--mini-scale)); line-height: calc(18px * var(--mini-scale)); color: #6a7588; white-space: nowrap; }
+.mini-metric-label > span { display: inline-flex; align-items: center; gap: 4px; }
+.mini-metric-label > span > svg { flex-shrink: 0; }
+.mini-unit { margin-left: auto; font-size: calc(11px * var(--mini-scale)); color: #7f8a9c; font-weight: 400; }
+.mini-readout { margin-top: calc(4px * var(--mini-scale)); height: calc(40px * var(--mini-scale)); display: flex; flex-direction: column; justify-content: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mini-value-line { display: flex; min-width: 0; overflow-x: auto; scrollbar-width: thin; }
+.mini-readout strong { margin-left: auto; flex: none; white-space: nowrap; font-size: calc(26px * var(--mini-scale)); line-height: calc(40px * var(--mini-scale)); font-weight: 500; letter-spacing: -.45px; }
+.mini-current .mini-readout strong { color: #4768f2; }
+.mini-multiline { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: calc(24px * var(--mini-scale)) calc(16px * var(--mini-scale)); }
+.mini-multiline strong { font-size: calc(20px * var(--mini-scale)); line-height: calc(24px * var(--mini-scale)); letter-spacing: -.2px; }
+.mini-readout-secondary { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: calc(13px * var(--mini-scale)); line-height: calc(16px * var(--mini-scale)); color: #7b8799; }
+.mini-basis { flex: none; font-size: calc(11px * var(--mini-scale)); }
+.mini-total { margin-left: auto; white-space: nowrap; }
+.mini-metric.is-dragging { border: 1px dashed #9eaff4; background: #f0f4ff; outline: none; }
+.mini-metric.is-dragging > * { opacity: .2; }
+.mini-drag-preview { position: fixed; left: 0; top: 0; z-index: 20; pointer-events: none; }
+.mini-drag-card { min-height: inherit; height: 100%; background: #fff; border-color: #a8b8ef; box-shadow: 0 10px 22px #314a8a26; transform: scale(1.01); }
+.mini-drag-card .mini-metric-label svg { color: #9aa8bf; }
+.mini-edit-header { border-bottom: 1px solid #edf0f4; padding-bottom: 4px; }
+.mini-edit-title { font-size: calc(12px * var(--mini-scale)); color: #3d485a; font-weight: 500; }
+.mini-done { font-size: calc(11px * var(--mini-scale)); min-height: 26px; padding: 3px 9px; border: 0; border-radius: 6px; background: #f0f4ff; color: #4768f2; -webkit-app-region: no-drag; }
+.mini-settings { min-height: 0; flex: 1; overflow-y: auto; padding: 14px 16px 18px; scrollbar-width: thin; }
+.mini-scroll, .mini-settings { scrollbar-color: transparent transparent; }
+.mini-scroll:hover, .mini-settings:hover, .mini-scroll.is-scrolling, .mini-settings.is-scrolling,
+.mini-scroll:has(:focus-visible), .mini-settings:has(:focus-visible) { scrollbar-color: #bdc9dc transparent; }
+.mini-settings-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(165px * var(--mini-scale))), 1fr)); gap: 16px; }
+.mini-settings h2 { margin: 0 0 8px; font-size: calc(11px * var(--mini-scale)); font-weight: 500; color: #8791a0; letter-spacing: 0; }
+.mini-opacity { display: block; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #edf0f4; font-size: calc(11.5px * var(--mini-scale)); color: #505d71; }
+.mini-opacity > span { display: flex; justify-content: space-between; }
+.mini-opacity output { font-variant-numeric: tabular-nums; color: #4768f2; }
+.mini-opacity input { display: block; min-height: 0; height: 16px; padding: 0; margin: 8px 0 3px; border: 0; box-shadow: none; accent-color: #4768f2; }
+.mini-opacity small { color: #8791a0; font-size: calc(11px * var(--mini-scale)); }
+.mini-checkbox { display: flex; align-items: center; position: relative; gap: 8px; min-height: 27px; font-size: calc(11.5px * var(--mini-scale)); color: #505d71; cursor: pointer; }
+.mini-checkbox input { position: absolute; width: 14px; height: 14px; opacity: 0; margin: 0; }
+.mini-check-mark { display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; flex: 0 0 auto; border: 1px solid #cfd7e3; border-radius: 3px; background: #fff; }
+.mini-check-mark svg { visibility: hidden; }
+.mini-checkbox input:checked + .mini-check-mark { background: #4768f2; border-color: #4768f2; color: #fff; }
+.mini-checkbox input:checked + .mini-check-mark svg { visibility: visible; }
+.mini-checkbox input:focus-visible + .mini-check-mark { outline: 2px solid #4768f2; outline-offset: 2px; }
+.mini-gpu { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; font-size: calc(11px * var(--mini-scale)); color: #6a7588; }
+.mini-gpu select { min-height: 28px; padding: 4px 7px; font-size: inherit; }
+.mini-error { padding: 4px 12px; font-size: 11px; color: #a8394a; }
+.mini-empty { display: block; margin: 16px auto; border: 0; padding: 5px 10px; background: #f0f4ff; color: #4768f2; border-radius: 6px; font-size: 12px; }
+.mini-resize-mark { position: fixed; right: 4px; bottom: 4px; width: 8px; height: 8px; pointer-events: none; background: repeating-linear-gradient(135deg, transparent 0 2px, #c6ced8 2px 3px); clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+.mini-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+@media (max-width: 350px) { .mini-status { display: none; } .mini-instance { max-width: none; flex: 1; } .mini-title-space { flex: 0 0 8px; } }
+@media (hover: hover) and (pointer: fine) { .mini-icon:hover { background: #eef2f8; color: #4768f2; } .mini-close:hover { background: #fbeef0; color: #c84c5e; } .mini-metric:hover { background: #f0f4fa; } }
+@media (prefers-reduced-motion: reduce) { .mini-drag-card { transform: none; } }

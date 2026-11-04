@@ -1,0 +1,12 @@
+{
+  "source": {
+    "repository": "Qwen/Qwen3.5-4B",
+    "revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+    "shard": "model.safetensors-00002-of-00002.safetensors",
+    "scope": "Actual downloaded safetensors header excerpt; tensor payloads were not read"
+  },
+  "tensors": {
+    "model.language_model.layers.0.linear_attn.in_proj_a.weight": {"dtype": "BF16", "shape": [32, 2560]},
+    "model.language_model.layers.0.linear_attn.in_proj_b.weight": {"dtype": "BF16", "shape": [32, 2560]}
+  }
+}

@@ -1,0 +1,42 @@
+.profile-actions .chat-quick-load-toggle[aria-pressed='true'] { color: var(--blue); }
+.chat-model-group-label { padding: 7px 8px 3px; color: var(--chat-secondary); font-size: calc(11px * var(--font-scale, 1)); }
+.chat-model-list [role='option'][aria-disabled='true'] { cursor: default; color: var(--chat-secondary); }
+.chat-model-list [role='option'][data-model-ready='false'] { color: var(--chat-secondary); }
+.chat-model-list .chat-quick-load-label { display: flex; flex-direction: column; gap: 2px; }
+.chat-model-list .chat-quick-load-detail, .chat-model-list .chat-quick-load-error { color: var(--chat-secondary); font-size: calc(11px * var(--font-scale, 1)); line-height: 1.5; }
+.chat-model-list .chat-quick-load-error { color: var(--red); }
+.chat-model-list [role='option'] > .chat-quick-load-status { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; color: var(--chat-secondary); font-size: calc(11px * var(--font-scale, 1)); }
+.chat-model-list .chat-quick-load-status svg { flex-shrink: 0; }
+
+/* A filled bolt makes the saved quick-load state readable without a toast. */
+.profile-actions .chat-quick-load-toggle { position: relative; }
+.profile-actions .chat-quick-load-toggle svg { transform: rotate(-12deg) scale(.95); fill: transparent; transition: transform 200ms var(--ease-out, cubic-bezier(.23,1,.32,1)), fill 200ms ease; }
+.profile-actions .chat-quick-load-toggle[aria-pressed='true'] svg { color: var(--blue); transform: rotate(0deg) scale(1.15); fill: currentColor; }
+.profile-actions .chat-quick-load-toggle:active { transform: scale(.97); }
+.chat-model-list .chat-quick-load-label { flex: 1; min-width: 0; }
+.chat-model-list .chat-quick-load-label > span:first-child, .chat-model-list .chat-loaded-name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.chat-model-list .chat-loaded-name { flex: 1; }
+.chat-model-list .chat-quick-load-error { white-space: normal; overflow-wrap: anywhere; }
+.chat-model-list .chat-instance-action { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; color: var(--chat-secondary); border: 0; background: transparent; border-radius: 6px; }
+.chat-model-list .chat-instance-action:focus-visible { outline: 2px solid var(--blue); }
+.chat-model-list [role='option'] > .chat-quick-load-status { max-width: 100px; }
+.chat-model-list .chat-quick-load-status > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (hover: hover) and (pointer: fine) { .chat-model-list .chat-instance-action:hover { color: var(--blue); background: var(--hover); } }
+@media (prefers-reduced-motion: reduce) {
+  .profile-actions .chat-quick-load-toggle svg, .profile-actions .chat-quick-load-toggle[aria-pressed='true'] svg { color: var(--blue); transform: none; transition-property: opacity, fill; }
+  .profile-actions .chat-quick-load-toggle:active { transform: none; }
+}
+
+.profile-actions .chat-quick-load-toggle .quick-load-bolt { transition: transform 200ms var(--ease-out, cubic-bezier(.23,1,.32,1)), opacity 200ms var(--ease-out, cubic-bezier(.23,1,.32,1)), fill 200ms ease; }
+.profile-actions .chat-quick-load-toggle .quick-load-confirm { position: absolute; display: grid; place-items: center; inset: 0; color: var(--blue); opacity: 0; transform: scale(.95); transition: transform 200ms var(--ease-out, cubic-bezier(.23,1,.32,1)), opacity 200ms var(--ease-out, cubic-bezier(.23,1,.32,1)); }
+.profile-actions .chat-quick-load-toggle .quick-load-confirm svg { transform: none; fill: none; stroke-width: 3; }
+.profile-actions .chat-quick-load-toggle .quick-load-confirm-ring { position: absolute; inset: 2px; border: 1.5px solid var(--blue); border-radius: 7px; opacity: 0; transform: scale(1.15); transition: transform 200ms var(--ease-out, cubic-bezier(.23,1,.32,1)), opacity 200ms var(--ease-out, cubic-bezier(.23,1,.32,1)); pointer-events: none; }
+.profile-actions .chat-quick-load-toggle[data-feedback] .quick-load-bolt { opacity: 0; transform: scale(.95); }
+.profile-actions .chat-quick-load-toggle[data-feedback] .quick-load-confirm { opacity: 1; transform: scale(1); }
+.profile-actions .chat-quick-load-toggle[data-feedback] .quick-load-confirm-ring { opacity: .65; transform: scale(1); }
+.profile-actions .chat-quick-load-toggle[data-feedback='removed'] .quick-load-confirm-ring { transform: scale(.95); opacity: .35; }
+@media (prefers-reduced-motion: reduce) {
+  .profile-actions .chat-quick-load-toggle .quick-load-bolt,
+  .profile-actions .chat-quick-load-toggle .quick-load-confirm,
+  .profile-actions .chat-quick-load-toggle .quick-load-confirm-ring { transform: none !important; transition-property: opacity, fill; }
+}

@@ -1,0 +1,75 @@
+.monitor-usage-hardware { margin-top: 26px; min-width: 0; }
+.monitor-usage-hardware > .section-heading { margin-bottom: 12px; }
+.monitor-usage-hardware-panel { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: clip; min-width: 0; }
+.monitor-usage { min-width: 0; }
+.monitor-usage-overview { position: relative; padding: 20px 22px 22px; }
+.monitor-usage-overview > :not(.monitor-usage-toggle) { pointer-events: none; }
+.monitor-usage-toggle { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; border-radius: 9px; }
+.monitor-usage-toggle:focus-visible { outline-offset: -3px; }
+.monitor-usage-heading { display: grid; grid-template-columns: auto minmax(0, 1fr) 16px; align-items: center; gap: 12px; min-height: 34px; margin-bottom: 20px; }
+.monitor-usage-heading h3 { font-size: calc(14px * var(--font-scale, 1)); font-weight: 500; }
+.monitor-usage-heading > span { color: var(--muted); font-size: calc(12px * var(--font-scale, 1)); text-align: right; }
+.monitor-usage-heading small { margin-right: 10px; font-size: inherit; }
+.monitor-usage-heading svg { color: var(--muted); transition: transform 200ms var(--ease-out); }
+.monitor-usage:has(.monitor-usage-toggle[aria-expanded='true']) .monitor-usage-heading svg { transform: rotate(180deg); }
+.monitor-usage .monitor-history-summary { display: block; margin: 0; padding: 0; border: 0; }
+.monitor-usage .monitor-history-summary [data-summary] { display: block; margin: 0; color: var(--ink); line-height: 1.25; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.monitor-usage-primary > div, .monitor-usage-secondary > div { min-width: 0; }
+.monitor-usage-primary, .monitor-usage-secondary { display: grid; grid-template-columns: 1.25fr 1fr 1fr; gap: 18px 24px; }
+.monitor-usage-secondary { margin-top: 20px; }
+.monitor-usage .monitor-usage-primary [data-summary] { font-size: calc(28px * var(--font-scale, 1)); font-weight: 500; }
+.monitor-usage .monitor-usage-secondary [data-summary] { font-size: calc(18px * var(--font-scale, 1)); font-weight: 400; }
+.monitor-usage .monitor-summary-label { color: var(--muted); margin-bottom: 5px; font-size: calc(12px * var(--font-scale, 1)); line-height: 1.25; }
+.monitor-usage .monitor-usage-primary .monitor-summary-label { font-size: calc(14px * var(--font-scale, 1)); }
+.monitor-usage-collapse { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 200ms var(--ease-out), opacity 160ms var(--ease-out); }
+.monitor-usage-collapse[data-open='true'] { grid-template-rows: 1fr; opacity: 1; }
+.monitor-usage-clip { min-height: 0; overflow: hidden; }
+.monitor-usage-chart { padding: 2px 22px 22px; }
+.monitor-usage-chart-heading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
+.monitor-usage-chart-heading h4 { font-size: calc(14px * var(--font-scale, 1)); font-weight: 500; }
+.monitor-usage-chart-heading > span { color: var(--muted); font-size: calc(12px * var(--font-scale, 1)); }
+.monitor-usage-plot { position: relative; min-width: 0; height: 252px; margin-top: 14px; }
+.monitor-usage-plot > svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.monitor-usage-axis { fill: var(--muted); font: calc(12px * var(--font-scale, 1)) Outfit, 'Microsoft YaHei UI', sans-serif; font-variant-numeric: tabular-nums; }
+.monitor-usage-plot .trend-grid { fill: none; stroke: var(--soft-line); stroke-width: 1; }
+.monitor-usage [data-usage-series], .monitor-usage [data-usage-marker], .monitor-usage [data-usage-legend], .monitor-usage [data-usage-tooltip-row] { --usage-color: var(--blue); }
+.monitor-usage [data-usage-series='hit'], .monitor-usage [data-usage-marker='hit'], .monitor-usage [data-usage-legend='hit'], .monitor-usage [data-usage-tooltip-row='hit'] { --usage-color: #8b5cc7; --usage-dash: 5 5; --usage-border: dashed; }
+.monitor-usage [data-usage-series='input'], .monitor-usage [data-usage-marker='input'], .monitor-usage [data-usage-legend='input'], .monitor-usage [data-usage-tooltip-row='input'] { --usage-color: #118767; }
+.monitor-usage [data-usage-series='output'], .monitor-usage [data-usage-marker='output'], .monitor-usage [data-usage-legend='output'], .monitor-usage [data-usage-tooltip-row='output'] { --usage-color: #a67a35; }
+.monitor-usage [data-usage-series='cached'], .monitor-usage [data-usage-marker='cached'], .monitor-usage [data-usage-legend='cached'], .monitor-usage [data-usage-tooltip-row='cached'] { --usage-color: var(--muted); --usage-dash: 2 4; --usage-border: dotted; }
+.monitor-usage-line { fill: none; stroke: var(--usage-color); stroke-width: 1.6; stroke-dasharray: var(--usage-dash, none); stroke-linecap: round; stroke-linejoin: round; }
+.monitor-usage-line[data-usage-series='total'] { stroke-width: 2.3; }
+.monitor-usage-guide { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.monitor-usage-marker { fill: var(--surface); stroke: var(--usage-color); stroke-width: 1.5; }
+.monitor-usage-hits { position: absolute; inset: 0; pointer-events: none; }
+.monitor-usage-hits > button { position: absolute; padding: 0; border: 0; background: transparent; border-radius: 0; pointer-events: auto; }
+.monitor-usage-hits > button:focus-visible { outline-offset: -2px; }
+.monitor-usage-tooltip { position: absolute; z-index: 3; width: max-content; min-width: 188px; max-width: calc(100% - 16px); padding: 11px 13px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); pointer-events: none; }
+.monitor-usage-tooltip > header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: calc(12px * var(--font-scale, 1)); }
+.monitor-usage-partial { color: #a67a35; }
+.monitor-usage-tooltip-count { color: var(--muted); font-size: calc(12px * var(--font-scale, 1)); margin: 3px 0 8px; }
+.monitor-usage-tooltip-rows { display: grid; gap: 5px; }
+.monitor-usage-tooltip-rows > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; }
+.monitor-usage-tooltip-rows > div > span { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: calc(12px * var(--font-scale, 1)); }
+.monitor-usage-tooltip-rows strong { font-size: calc(14px * var(--font-scale, 1)); font-weight: 400; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.monitor-usage-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px 20px; margin-top: 12px; }
+.monitor-usage-legend > button { display: inline-flex; align-items: center; gap: 7px; padding: 3px 0; border: 0; background: transparent; font-size: calc(12px * var(--font-scale, 1)); }
+.monitor-usage-legend > button[aria-pressed='false'] { color: var(--muted); }
+.monitor-usage-legend > button[aria-pressed='false'] > i { opacity: .25; }
+.monitor-usage-legend i, .monitor-usage-tooltip-rows i { display: inline-block; width: 18px; flex: none; border-top: 2px var(--usage-border, solid) var(--usage-color); }
+.monitor-usage-tooltip-rows i { width: 12px; }
+.monitor-usage-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: calc(14px * var(--font-scale, 1)); background: var(--surface); }
+.monitor-usage-hardware-panel .monitor-hardware-summary { margin: 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; box-shadow: none; padding: 0 8px; }
+.monitor-usage-hardware-panel .resource-detail { margin: 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; box-shadow: none; }
+@media (hover: hover) and (pointer: fine) { .monitor-usage-overview:hover .monitor-usage-heading svg { color: var(--blue); } }
+@media (max-width: 790px) {
+  .monitor-usage-overview { padding: 18px 16px; }
+  .monitor-usage-chart { padding: 2px 16px 18px; }
+  .monitor-usage-primary, .monitor-usage-secondary { gap: 12px; }
+}
+@media (max-width: 520px) {
+  .monitor-usage-primary, .monitor-usage-secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .monitor-usage-primary > div:first-child { grid-column: 1 / -1; }
+  .monitor-usage-heading > span { font-size: calc(11px * var(--font-scale, 1)); }
+}
+@media (prefers-reduced-motion: reduce) { .monitor-usage-collapse, .monitor-usage-heading svg { transition: none; } }

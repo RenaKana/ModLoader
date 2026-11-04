@@ -1,0 +1,20 @@
+.model-storage-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.model-storage-line .path-strip > svg { flex-shrink: 0; }
+.model-storage-action { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+.model-storage .field-help { margin: 7px 0 0; }
+.model-storage .job-row { margin-top: 10px; }
+.storage-details { display: grid; gap: 18px; }
+.storage-details .key-value > div { overflow-wrap: anywhere; }
+.storage-options { display: flex; flex-wrap: wrap; gap: 10px; }
+.storage-destination { display: flex; gap: 8px; flex-wrap: wrap; }
+.storage-destination > .input-with-button { flex: 1; min-width: min(100%, 260px); }
+.migration-preview { display: grid; gap: 14px; }
+.migration-preview .key-value { align-items: start; }
+.migration-preview .key-value > div { overflow-wrap: anywhere; min-width: 0; }
+.migration-profiles h4 { margin: 0 0 8px; font-size: calc(14px * var(--font-scale, 1)); color: #31435c; }
+.migration-profiles ul, .migration-preserved ul { margin: 0; padding-left: 20px; max-height: 180px; overflow: auto; color: #526781; font-size: calc(13px * var(--font-scale, 1)); line-height: 1.8; }
+.migration-profiles p, .migration-job > p { margin: 0; color: #677b96; font-size: calc(13px * var(--font-scale, 1)); line-height: 1.6; }
+.migration-preserved summary { color: #677b96; cursor: pointer; font-size: calc(13px * var(--font-scale, 1)); }
+.migration-preserved li span { display: block; color: #7b899e; }
+.migration-preview .check-option { margin: 0; }
+.migration-job { display: grid; gap: 14px; }

@@ -1,0 +1,15 @@
+.runtime-search-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.runtime-search-toolbar > div { flex: 1 1 230px; min-width: 0; display: grid; gap: 5px; }
+.runtime-search-toolbar strong { color: #546580; font-size: calc(14px * var(--font-scale, 1)); }
+.runtime-search-toolbar span { color: #8692a5; font-size: calc(12px * var(--font-scale, 1)); overflow-wrap: anywhere; }
+.runtime-search-status { display: flex; justify-content: center; align-items: center; gap: 10px; padding: 45px 16px; color: #74849b; font-size: calc(14px * var(--font-scale, 1)); }
+.runtime-search-count { display: flex; gap: 10px; justify-content: space-between; flex-wrap: wrap; font-size: calc(12px * var(--font-scale, 1)); color: #8290a4; margin: 18px 0 9px; }
+.runtime-search-name { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.runtime-search-candidate .runtime-search-name strong { margin-right: 0; }
+.runtime-search-candidate > div { min-width: 0; flex: 1; }
+.runtime-search-candidate > .button { flex-shrink: 0; }
+.runtime-search-source { color: #8895a7; font-size: calc(11px * var(--font-scale, 1)); overflow-wrap: anywhere; }
+.runtime-search-details { margin-top: 14px; border: 1px solid #e5ebf5; border-radius: 11px; padding: 11px 13px; color: #74849b; font-size: calc(12px * var(--font-scale, 1)); }
+.runtime-search-details summary { cursor: pointer; color: #5c6f8c; }
+.runtime-search-details p { display: grid; gap: 4px; margin-top: 9px; overflow-wrap: anywhere; }
+.runtime-search-details .mono { font-size: inherit; }

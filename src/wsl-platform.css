@@ -1,0 +1,22 @@
+.runtime-platform { margin-top: 24px; }
+.runtime-platform > .section-heading { margin-bottom: 12px; }
+.runtime-platform > .section-heading h3 { color: #40536f; font-size: calc(16px * var(--font-scale, 1)); }
+.runtime-platform .backend-grid { margin-bottom: 0; }
+.wsl-distributions { margin-bottom: 16px; border: 1px solid var(--line); border-radius: 12px; padding: 8px 18px 12px; background: var(--panel, #fff); }
+.wsl-distribution-heading, .wsl-distribution-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.wsl-distribution-heading { justify-content: space-between; color: #5b6c84; font-size: calc(13px * var(--font-scale, 1)); }
+.wsl-distribution { padding: 10px 0; border-top: 1px solid var(--soft-line); }
+.wsl-distribution-summary strong { color: #40536f; font-size: calc(14px * var(--font-scale, 1)); overflow-wrap: anywhere; }
+.wsl-distribution-summary > span:not(.badge) { color: #667085; font-size: calc(12px * var(--font-scale, 1)); }
+.wsl-distribution-summary > .button { margin-left: auto; }
+.wsl-check-result { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-top: 12px; color: #53647e; font-size: calc(12px * var(--font-scale, 1)); overflow-wrap: anywhere; }
+.wsl-check-result p { margin: 0; flex-basis: 100%; }
+.wsl-list-note { color: #667085; font-size: calc(12px * var(--font-scale, 1)); margin: 8px 0 0; }
+.wsl-browser-toolbar { display: flex; justify-content: space-between; align-items: center; color: #667085; font-size: calc(12px * var(--font-scale, 1)); margin: 12px 0; }
+.wsl-browser-entries { min-height: 140px; max-height: min(43vh, 400px); overflow: auto; border-top: 1px solid var(--soft-line); }
+.wsl-browser-entries > button { width: 100%; display: flex; gap: 12px; align-items: center; text-align: left; padding: 11px 8px; border: 0; border-bottom: 1px solid var(--soft-line); background: transparent; color: #42536e; font: inherit; font-size: calc(13px * var(--font-scale, 1)); cursor: pointer; }
+.wsl-browser-entries > button:not(:disabled):hover { background: #f3f7fc; }
+.wsl-browser-entries > button:disabled { opacity: .55; cursor: default; }
+.wsl-browser-entries > button > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.wsl-browser-entries > button > svg { flex-shrink: 0; color: #6a82a4; }
+.wsl-browser-entries small { font-size: calc(12px * var(--font-scale, 1)); color: #667085; flex-shrink: 0; }

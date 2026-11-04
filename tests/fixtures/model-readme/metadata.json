@@ -1,0 +1,15 @@
+{
+  "repo_id": "SC117/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF",
+  "revision": "eec4e10a2c29b440a2ae85591fa11569ce752963",
+  "file": "README.md",
+  "raw_url": "https://huggingface.co/SC117/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF/resolve/eec4e10a2c29b440a2ae85591fa11569ce752963/README.md",
+  "fetched_at_utc": "2026-10-15T08:40:39.0427847+00:00",
+  "bytes": 49825,
+  "cache_match": true,
+  "languages": [
+    "en",
+    "zh"
+  ],
+  "chinese_readme_path": "README.zh-CN.md",
+  "chinese_readme_bytes": 47601
+}

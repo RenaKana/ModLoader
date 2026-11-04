@@ -274,10 +274,25 @@ for (const source of ['hf', 'modelscope']) {
       await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '发现模型', exact: true }).click()
       if (source === 'modelscope') await page.getByRole('button', { name: /ModelScope$/ }).click()
       await page.getByRole('textbox', { name: '搜索在线模型' }).fill('Qwen2.5-0.5B-Instruct')
-      const searchResponse = page.waitForResponse(response => new URL(response.url()).pathname === `/api/sources/${source}/search`, { timeout: 90_000 })
+      let payload: any
+      // Search is NDJSON; the UI cancels its reader after the result frame.
+      // Capture the real stream before forwarding it, rather than reading a
+      // cancelled CDP response as the legacy single JSON document.
+      await page.route(`**/api/sources/${source}/search*`, async route => {
+        if (route.request().method() === 'OPTIONS') { await route.continue(); return }
+        const response = await route.fetch({ timeout: 90_000 })
+        const body = await response.body()
+        expect(response.headers()['content-type']).toContain('application/x-ndjson')
+        const frames = body.toString('utf-8').trim().split('\n').map(line => JSON.parse(line))
+        expect(frames.filter(frame => frame.type === 'error')).toEqual([])
+        const results = frames.filter(frame => frame.type === 'result')
+        expect(results).toHaveLength(1)
+        payload = results[0].value
+        await route.fulfill({ response, body })
+      })
+      const searchResponse = page.waitForResponse(response => response.request().method() === 'GET' && new URL(response.url()).pathname === `/api/sources/${source}/search`, { timeout: 90_000 })
       await page.getByRole('button', { name: '搜索', exact: true }).click()
       const response = await searchResponse
-      const payload = await response.json()
       expect(response.ok(), JSON.stringify({ status: response.status(), payload })).toBe(true)
       expect(payload.items.length).toBeGreaterThan(0)
       console.log(JSON.stringify({ source, firstResult: payload.items[0] }))

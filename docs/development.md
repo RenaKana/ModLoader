@@ -105,9 +105,9 @@ npm run package
 
 `build-core.ps1` 使用 PyInstaller，将核心、模型来源工作进程所需模块、温度读取器和补丁资源打包到 `work/core-dist/modloader-core`。
 
-`npm run package` 生成图标、构建界面，并由 electron-builder 输出 `release/win-unpacked`。这个目录整体构成桌面包，入口是其中的 `ModLoader.exe`；Python 核心已包含在包中，不需要收件人安装项目 `.venv`。模型、运行环境和个人数据需要另行准备。
+`npm run package` 生成图标、收集依赖许可、构建界面，并由 electron-builder 输出 `release/win-unpacked`。这个目录整体构成桌面包，入口是其中的 `ModLoader.exe`；Python 核心已包含在包中，不需要收件人安装项目 `.venv`。模型、运行环境和个人数据需要另行准备。
 
-桌面打包会自动附带 [LICENSE](../LICENSE)、[第三方声明](../THIRD_PARTY_NOTICES.md)、[第三方许可目录](../third_party/licenses) 和 `licenses/Outfit-OFL.txt`。分发前仍需按实际包含的依赖核对许可、声明和源码提供要求；运行环境和模型的许可独立适用。
+桌面打包会自动附带 [LICENSE](../LICENSE)、[第三方声明](../THIRD_PARTY_NOTICES.md)、[第三方许可目录](../third_party/licenses)、[源码获取说明](../third_party/SOURCES.md)、`licenses/Outfit-OFL.txt` 和 `licenses/dependencies/`。许可收集脚本缺少完整文本或发现锁定版本不匹配时会报错；上游包未携带的许可按固定版本记录在 `third_party/npm-license-supplements.json`。运行环境和模型的许可独立适用。
 
 ## 代码入口
 

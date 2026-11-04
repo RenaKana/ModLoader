@@ -10,8 +10,9 @@
     "desktop": "electron .",
     "build": "tsc --noEmit && vite build",
     "build:icons": "node scripts/build-icons.cjs",
+    "build:licenses": ".venv\\Scripts\\python.exe scripts/collect_release_licenses.py --output work/release-licenses",
     "test:ui": "playwright test",
-    "package": "npm run build:icons && npm run build && electron-builder --win --dir"
+    "package": "npm run build:icons && npm run build:licenses && npm run build && electron-builder --win --dir"
   },
   "dependencies": {
     "@viz-js/viz": "^3.31.0",
@@ -71,7 +72,12 @@
     "extraFiles": [
       "LICENSE",
       "THIRD_PARTY_NOTICES.md",
+      "third_party/SOURCES.md",
       "third_party/licenses/**/*",
+      {
+        "from": "work/release-licenses",
+        "to": "licenses/dependencies"
+      },
       {
         "from": "src/assets/fonts/OFL.txt",
         "to": "licenses/Outfit-OFL.txt"

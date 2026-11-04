@@ -22,9 +22,11 @@ Windows 本地大模型管理与运行工具。统一管理模型文件、运行
 
 ## 获取与启动
 
-目前仅提供源码，尚未发布桌面下载包。依赖准备、源码启动和桌面打包见[开发与构建](docs/development.md)。
+**[下载 Windows x64 便携版](https://github.com/RenaKana/ModLoader/releases/latest)**
 
-完成开发准备后，使用 `Start-ModLoader-Dev.cmd --build` 构建并启动源码版。自行构建的桌面包从 `release/win-unpacked/ModLoader.exe` 启动。
+在 Releases 中下载 `ModLoader-v0.1.0-windows-x64.zip`，完整解压到可写目录后运行 `ModLoader.exe`。支持 Windows 10 / 11（64 位），无需另行安装 Python 或 Node.js。模型和运行环境可在应用内下载、安装或导入。
+
+源码开发和自行打包见[开发与构建](docs/development.md)。
 
 ## 快速开始
 

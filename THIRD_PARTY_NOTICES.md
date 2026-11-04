@@ -41,9 +41,12 @@ Copyright (c) 2026 Niko1221 and the Strata contributors。上游采用 MIT，完
 
 ## 安装与打包时引入的组件
 
+桌面包附带 `licenses/dependencies/README.md` 和 `index.json`，保存 npm 生产依赖、Electron、Python 构建环境及 CPython 的完整许可文件、版本和来源。Python 清单覆盖构建环境，包含部分仅用于构建或测试的包。需要源码的组件见[第三方源码获取](third_party/SOURCES.md)。
+
 依赖版本由 `package-lock.json`、`requirements.lock.txt`、`requirements-dev.txt` 和 `native/cpu-sensors/packages.config` 记录。依赖包、模型运行环境和生成的二进制文件不作为 ModLoader 源码提交。
 
 - **界面与桌面**：包括 Electron、React、Mermaid、KaTeX、Lucide、D3、DOMPurify、ELK.js 等。除 MIT/ISC 外，依赖还使用 Apache-2.0、BSD、MPL-2.0、EPL-2.0 和 Unlicense 等许可，不能统一改标为 MIT。
+- **Graphviz 渲染**：Viz.js 3.31.0 使用 MIT，其 WebAssembly 中的 Graphviz 16.1.0 使用 EPL-2.0，Expat 2.8.5 使用 MIT；三者的原始许可分别保留于 `third_party/licenses`，固定版本来自 Viz.js 的构建来源清单。
 - **Python 核心**：依赖按各包许可使用，包括 BSD、Apache-2.0、MPL-2.0 等。PyInstaller 的引导程序使用 GPLv2-or-later，并带有允许分发冻结应用的 bootloader exception。
 - **温度读取器**：组件及许可详见源码中的 `native/cpu-sensors/THIRD-PARTY.md` 和 `native/cpu-sensors/licenses/`。包括 LibreHardwareMonitor（MPL-2.0）、PawnIO.Modules（LGPL-2.1-or-later）等。构建脚本将组件提供的许可文件复制到读取器输出目录。PawnIO 驱动由用户另行安装，不随 ModLoader 分发。
 

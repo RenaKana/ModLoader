@@ -40,6 +40,14 @@ Windows 本地大模型管理与运行工具。统一管理模型文件、运行
 
 ![发现模型的搜索结果与下载入口](docs/images/model-discovery.png)
 
+### 运行环境
+
+![运行环境中的后端安装与环境管理](docs/images/runtimes.png)
+
+### 运行监控
+
+![运行监控中的请求记录、用量与硬件指标](docs/images/monitor.png)
+
 ### 测试对话
 
 ![测试对话中的示例会话与代码块](docs/images/chat.png)

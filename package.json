@@ -1,6 +1,6 @@
 {
   "name": "modloader",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "license": "MIT",
   "description": "本地模型加载与管理工作台",
@@ -9,10 +9,11 @@
     "dev": "vite --host 127.0.0.1",
     "desktop": "electron .",
     "build": "tsc --noEmit && vite build",
+    "build:core": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-core.ps1",
     "build:icons": "node scripts/build-icons.cjs",
     "build:licenses": ".venv\\Scripts\\python.exe scripts/collect_release_licenses.py --output work/release-licenses",
     "test:ui": "playwright test",
-    "package": "npm run build:icons && npm run build:licenses && npm run build && electron-builder --win --dir"
+    "package": "npm run build:core && npm run build:icons && npm run build:licenses && npm run build && electron-builder --win --dir"
   },
   "dependencies": {
     "@viz-js/viz": "^3.31.0",

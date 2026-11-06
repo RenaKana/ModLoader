@@ -45,11 +45,16 @@ ModLoader 使用 Electron / React 界面和 Python 核心。以下步骤在 Wind
 
 修改 React/样式后重新执行 `--build`；Python 核心或 Electron 主进程修改后需要完全退出并重启。界面刷新只重新加载前端，不会重启 Python 核心。
 
-根目录的 `Start-ModLoader.cmd` 优先启动 `release/win-unpacked/ModLoader.exe`，没有桌面包时才使用源码入口。开发时使用 `Start-ModLoader-Dev.cmd`，避免误开旧桌面包。本机可选的 `Start-ModLoader.local.cmd` 供启动覆盖使用，不纳入版本控制。
+两个入口分别运行：
+
+| 启动脚本 | 运行内容 |
+| --- | --- |
+| `Start-ModLoader.cmd` | 正式桌面包 `release/win-unpacked/ModLoader.exe`；缺包时退出，不回退到源码 |
+| `Start-ModLoader-Dev.cmd` | 源码版 Electron、`.venv` 中的 Python 核心和现有 `dist` 界面；`--build` 重建温度读取器和界面后启动 |
 
 ## 隔离开发数据
 
-源码启动默认使用项目的 `data` 目录。根启动脚本也默认使用此目录；直接启动打包目录内的 EXE 则默认使用 EXE 旁的 `data`。
+正式入口使用项目的 `data` 目录，随后调用可选的 `Start-ModLoader.local.cmd` 覆盖环境；该本机文件不纳入版本控制。源码入口优先使用已有的 `MODLOADER_DATA_DIR`，未设置时也使用项目的 `data`。直接启动打包目录内的 EXE 则默认使用 EXE 旁的 `data`。
 
 需要独立数据时，在启动前设置环境变量：
 
@@ -96,16 +101,21 @@ Playwright 配置默认关闭自动温度授权。`tests/test_sources.py` 使用
 
 ## 构建桌面包
 
-先完成上述开发准备，再打包 Python 核心和桌面程序：
+先完成上述开发准备，再一次性重建 Python 核心、界面和桌面包：
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-core.ps1
 npm run package
 ```
 
-`build-core.ps1` 使用 PyInstaller，将核心、模型来源工作进程所需模块、温度读取器和补丁资源打包到 `work/core-dist/modloader-core`。
+`npm run package` 每次先执行 `npm run build:core`（`scripts/build-core.ps1`），使用 PyInstaller 将核心、模型来源工作进程所需模块、温度读取器和补丁资源打包到 `work/core-dist/modloader-core`，再生成图标、收集依赖许可、构建界面，并由 electron-builder 输出 `release/win-unpacked`。
 
-`npm run package` 生成图标、收集依赖许可、构建界面，并由 electron-builder 输出 `release/win-unpacked`。这个目录整体构成桌面包，入口是其中的 `ModLoader.exe`；Python 核心已包含在包中，不需要收件人安装项目 `.venv`。模型、运行环境和个人数据需要另行准备。
+不要直接向正在使用的 `release/win-unpacked` 构建。需要保留正式版运行时，可输出到隔离目录：
+
+```powershell
+npm run package -- --config.directories.output=.artifacts/codex/package-candidate
+```
+
+输出的 `win-unpacked` 目录整体构成桌面包，入口是其中的 `ModLoader.exe`；Python 核心已包含在包中，不需要收件人安装项目 `.venv`。模型、运行环境和个人数据需要另行准备。
 
 桌面打包会自动附带 [LICENSE](../LICENSE)、[第三方声明](../THIRD_PARTY_NOTICES.md)、[第三方许可目录](../third_party/licenses)、[源码获取说明](../third_party/SOURCES.md)、`licenses/Outfit-OFL.txt` 和 `licenses/dependencies/`。许可收集脚本缺少完整文本或发现锁定版本不匹配时会报错；上游包未携带的许可按固定版本记录在 `third_party/npm-license-supplements.json`。运行环境和模型的许可独立适用。
 
